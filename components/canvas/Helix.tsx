@@ -314,7 +314,8 @@ export function Helix({
       _e.set(0, pose.rotY, 0);
       _q.setFromEuler(_e);
 
-      const hoveredInList = listMode && s.hovered === projects[i].slug;
+      // no preview on mobile: a tap in the list opens the page straight away
+      const hoveredInList = listMode && !mobile && s.hovered === projects[i].slug;
       if (!spiralVisible && !hoveredInList) alphaTarget = 0;
 
       if (hoveredInList) {

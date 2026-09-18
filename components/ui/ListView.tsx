@@ -6,6 +6,8 @@ import gsap from "gsap";
 import { useStore } from "@/lib/store";
 import type { ProjectMeta } from "@/lib/projects";
 
+const canHover = () => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+
 export function ListView({ projects }: { projects: ProjectMeta[] }) {
   const setHovered = useStore((s) => s.setHovered);
   const hovered = useStore((s) => s.hovered);
@@ -28,7 +30,7 @@ export function ListView({ projects }: { projects: ProjectMeta[] }) {
       className="pointer-events-auto absolute inset-0 overflow-y-auto overscroll-contain px-4 pb-32 pt-24 md:pb-24"
       onMouseLeave={() => setHovered(null)}
     >
-      <ol ref={listRef} className="mx-auto flex max-w-5xl flex-col items-center gap-1 md:gap-1.5">
+      <ol ref={listRef} className="mx-auto flex max-w-5xl flex-col items-center gap-5 md:gap-1.5">
         {projects.map((p, i) => {
           const dim = hovered && hovered !== p.slug;
           const cls = `group relative block text-center text-[clamp(1.5rem,3.4vw,2.9rem)] font-medium leading-[1.12] tracking-[-0.02em] transition-colors duration-300 ${dim ? "text-muted-2" : "text-fg"}`;
@@ -44,7 +46,12 @@ export function ListView({ projects }: { projects: ProjectMeta[] }) {
             </>
           );
           return (
-            <li key={p.slug} onMouseEnter={() => setHovered(p.slug)} onFocus={() => setHovered(p.slug)}>
+            <li
+              key={p.slug}
+              // touch taps go straight to the page, so only a real mouse or keyboard focus shows the preview
+              onPointerEnter={(e) => e.pointerType === "mouse" && setHovered(p.slug)}
+              onFocus={() => canHover() && setHovered(p.slug)}
+            >
               {p.featured ? (
                 <Link href={`/work/${p.slug}`} className={cls}>
                   {inner}
