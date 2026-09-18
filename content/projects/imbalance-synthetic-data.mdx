@@ -1,0 +1,38 @@
+---
+slug: imbalance-synthetic-data
+title: Class imbalance vs synthetic tabular data
+tagline: An empirical study of how imbalance degrades CTGAN, TVAE, RTVAE, DDPM and SMOTE as data synthesisers.
+year: 2025
+kind: Research paper
+tags: [Generative models, Tabular data, Imbalance]
+stack: [synthcity, pymdma, scikit-learn]
+accent: "#7C9CFF"
+featured: true
+order: 2
+repo: https://github.com/Adriano-7/imbalance-effects-on-synthetic-data
+credits: With Maria Abreu, Moisés Santos, Carlos Soares, Marília Barandas and Mariana Oliveira · FEUP, LIACC, Fraunhofer AICOS Portugal
+---
+
+<Lead>
+Synthetic data is increasingly used as a replacement for real datasets, not just as augmentation. Most synthesisers are themselves machine-learning models, so they should be vulnerable to class imbalance in their training data. We measured how much.
+</Lead>
+
+## Question
+
+How does increasing class imbalance in the training data affect the **quality**, **privacy** and **downstream utility** of fully synthetic tabular datasets?
+
+## Method
+
+<Figure src="/projects/imbalance-synthetic-data/methodology.webp" alt="Experimental methodology" caption="Each dataset is split 80/20; the training set spawns imbalanced variants and a size-matched control." />
+
+- Six benchmark datasets: Mammographic Mass, Monks, Vote, Phishing, Credit, Auto MPG.
+- Imbalance ratios `IR ∈ {1, 3, 5, 7, 10, 20, 50, 100}` forced by randomly undersampling the minority class, 10 repetitions each.
+- A **size-matched control** keeps the original class balance at the same sample size, so imbalance is isolated from data scarcity.
+- Five generators (CTGAN, TVAE, RTVAE, DDPM and SMOTE used as a synthesiser) each trained on every variant, then asked to produce *balanced* synthetic sets.
+- Quality and privacy from `pymdma`; utility as TSTR (train on synthetic, test on real) classification.
+
+## Findings
+
+- Utility degrades across most datasets and models as imbalance grows, **even after controlling for sample size**.
+- The effect is strongest for **CTGAN and DDPM**, partly because they fail to honour the requested balanced class distribution during conditional generation under severe imbalance.
+- Aggregate quality and privacy metrics stay relatively stable, which can **mask class-specific degradation**: the minority class quietly gets worse while the global score looks fine.

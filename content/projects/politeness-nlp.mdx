@@ -1,0 +1,52 @@
+---
+slug: politeness-nlp
+title: Politeness classification, from SVMs to LoRA
+tagline: Four-way politeness classifier on Intel's Polite Guard, from Word2Vec baselines to RoBERTa, PEFT and LLM prompting.
+year: 2025
+kind: Course project · NLP
+tags: [NLP, Transformers, PEFT]
+stack: [PyTorch, HF Transformers, peft, W&B]
+accent: "#4ED4B2"
+featured: true
+order: 3
+grade: 20/20
+repo: https://github.com/Adriano-7/fcup-natural-language-processing
+credits: With Félix Martins and Francisco da Ana · Natural Language Processing, FEUP/FCUP
+---
+
+<Lead>
+Intel's Polite Guard dataset labels customer-service text as polite, somewhat polite, neutral or impolite. Over two assignments we climbed the whole ladder: sparse features and SVMs, transformer fine-tuning, domain adaptation, parameter-efficient adapters, and finally prompting LLMs.
+</Lead>
+
+## Phase 1: traditional ML
+
+- Bag-of-words, TF-IDF and dense Word2Vec features across dozens of hyper-parameter configurations.
+- Word2Vec embeddings visualised in 3D with TensorBoard and UMAP showed clean semantic clusters ("happy" vs "unhappy").
+- Best baseline: **SVM + Word2Vec, 88.5% F1**.
+
+<Figure src="/projects/politeness-nlp/embeddings.webp" alt="3D visualisation of Word2Vec embeddings" caption="Word2Vec embeddings, coloured by politeness polarity." />
+
+## Phase 2: transformers
+
+- Fine-tuned `bert-base-uncased` and `roberta-base`.
+- **Domain adaptation** via intermediate masked-language modelling on the Polite Guard corpus pushed RoBERTa to **92.4% F1**, matching the dataset's published state of the art.
+- **PEFT:** LoRA cut training time by ~25% for a ~1.9-point F1 drop; IA3 was faster still but degraded more.
+
+<Figure src="/projects/politeness-nlp/f1-vs-time.webp" alt="F1 score versus training time" caption="F1 against training time for full fine-tuning, domain adaptation, LoRA and IA3." />
+
+## Phase 3: prompting LLMs
+
+Llama 3 8B, Mistral 7B Instruct and Gemini 2.0 Flash with zero-shot, few-shot and chain-of-thought prompts scored only 60–70% F1. The fuzzy synthetic label boundaries reward task-specific fine-tuning over general capability.
+
+## Results
+
+<Table
+  head={["Model", "Training method", "F1"]}
+  rows={[
+    ["RoBERTa", "Domain adaptation (MLM) + fine-tune", "0.924"],
+    ["RoBERTa", "Full fine-tuning", "0.918"],
+    ["RoBERTa", "LoRA", "0.901"],
+    ["SVM", "Word2Vec", "0.885"],
+    ["Llama 3 8B", "Few-shot chain-of-thought", "~0.70"],
+  ]}
+/>

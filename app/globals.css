@@ -1,0 +1,176 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0a0a;
+  --fg: #ededed;
+  --muted: #8c8c8c;
+  --muted-2: #5a5a5a;
+  --accent: #f5a524;
+  --grid: rgba(255, 255, 255, 0.045);
+  --panel: #f4f4f2;
+  --panel-fg: #0a0a0a;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-muted-2: var(--muted-2);
+  --color-accent: var(--accent);
+  --color-panel: var(--panel);
+  --color-panel-fg: var(--panel-fg);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+html {
+  background: var(--bg);
+  color: var(--fg);
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-sans);
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* subtle lab grid behind everything */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 70% 70% at 50% 45%, black 20%, transparent 100%);
+}
+
+html[data-home="true"] body {
+  overflow: hidden;
+  height: 100dvh;
+}
+
+::selection {
+  background: var(--accent);
+  color: #0a0a0a;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--panel-fg);
+  padding: 0.55rem 1rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  transition: transform 0.25s ease, background 0.25s ease;
+}
+.pill:hover {
+  transform: translateY(-1px);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fade-up {
+  animation: fade-up 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* prose for case studies */
+.prose h2 {
+  font-size: 1.35rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin: 3rem 0 1rem;
+}
+.prose h3 {
+  font-size: 1.05rem;
+  font-weight: 500;
+  margin: 2rem 0 0.75rem;
+}
+.prose p,
+.prose li {
+  color: #cfcfcf;
+  line-height: 1.7;
+  font-size: 1.02rem;
+}
+.prose p {
+  margin: 1rem 0;
+}
+.prose ul {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+.prose li {
+  position: relative;
+  padding-left: 1.4rem;
+  margin: 0.45rem 0;
+}
+.prose li::before {
+  content: "";
+  position: absolute;
+  left: 0.2rem;
+  top: 0.78em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.prose li ul {
+  margin: 0.4rem 0 0;
+}
+.prose strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+.prose a {
+  color: var(--fg);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--muted-2);
+}
+.prose a:hover {
+  text-decoration-color: var(--accent);
+}
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

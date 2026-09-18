@@ -1,0 +1,45 @@
+---
+slug: deepfake
+title: Deepfake detection and generation
+tagline: Benchmarking CNNs and ViTs at spotting diffusion-generated faces, then generating them with GANs and DDPMs.
+year: 2025
+kind: Course project · Deep learning
+tags: [Computer vision, GANs, Diffusion]
+stack: [PyTorch, HF Diffusers, torchvision]
+accent: "#D86BB0"
+featured: true
+order: 5
+grade: 19/20
+repo: https://github.com/Adriano-7/fcup-deep-reinforcement-learning
+credits: With Francisco da Ana and Tomás Vicente · Deep and Reinforcement Learning, FEUP/FCUP
+---
+
+<Lead>
+DeepFakeFace holds 120k face images: real photographs plus fakes from three diffusion pipelines (Stable Diffusion 1.5, SD Inpainting, InsightFace). We built detectors, then tried to build the generators.
+</Lead>
+
+<Figure src="/projects/deepfake/dataset.webp" alt="Samples from the DeepFakeFace dataset" caption="Fakes from three diffusion pipelines." />
+
+## Detection
+
+The 3:1 fake/real imbalance was handled by undersampling to 10k fakes per generator. Pre-trained backbones got a new binary head; two CNNs were trained from scratch.
+
+<Table
+  head={["Model", "Test accuracy", "Note"]}
+  rows={[
+    ["EfficientNet-B0", "99.55%", "Best overall, converged within 10 epochs"],
+    ["DenseNet161", "98.85%", "Dense skip connections reuse features well"],
+    ["Custom CNN (4 blocks, BN, dropout)", "98.35%", "No ImageNet weights at all"],
+    ["ResNet50", "98.70%", "Adam beat SGD across every ResNet variant"],
+    ["ViT-B/16", "93.74%", "Needed a much smaller LR and batch"],
+    ["Baseline CNN (3 blocks)", "71.70%", "Confidence decayed without classic overfitting"],
+  ]}
+/>
+
+## Generation
+
+- **MLP-GAN** baseline: the classic volatility → equilibrium → divergence curve; after epoch 800 the discriminator wins and samples collapse into saturated noise.
+- **DCGAN** with transposed convolutions and the paper's `N(0, 0.02)` init: clearly face-like structure at 64×64.
+- **DDPM**, twice: a custom 5-level U-Net with sinusoidal time embeddings (T = 300, L1 loss, 900 epochs) gave diverse but desaturated faces; a `diffusers` UNet2DModel at 128×128 with a squared-cosine schedule produced far more vivid, coherent samples after only 30 epochs, at roughly 10 GPU-hours per 30 epochs.
+
+<Figure src="/projects/deepfake/generated.webp" alt="Grid of generated faces" caption="Generated samples at epoch 1500." />
