@@ -10,6 +10,7 @@ export type HelixParams = {
   cardW: number;
   cardH: number;
   bend: number;
+  rise: 1 | -1; // +1: the next card sits higher than the front one, -1: lower
 };
 
 export const DESKTOP_HELIX: HelixParams = {
@@ -23,6 +24,7 @@ export const DESKTOP_HELIX: HelixParams = {
   cardW: 1.5,
   cardH: 0.94,
   bend: 0.07,
+  rise: 1,
 };
 
 // Neighbouring cards must not overlap on screen: the card entering the front and the one
@@ -31,7 +33,9 @@ export const MOBILE_HELIX: HelixParams = {
   ...DESKTOP_HELIX,
   radius: 1.7,
   stepY: 0.88,
-  tilt: [-0.1, 0, -0.18],
+  // next card below the front one, so a swipe up (or left) brings it in, as on any feed/carousel
+  rise: -1,
+  tilt: [-0.1, 0, 0.18], // mirrored with `rise` so the spiral still reads as a gentle diagonal
   cardW: 1.35,
   cardH: 0.85,
 };
@@ -64,7 +68,7 @@ export function cardPose(t: number, n: number, p: HelixParams): Pose {
   const edge = n / 2 - Math.abs(t);
   return {
     x: s * p.radius,
-    y: t * p.stepY,
+    y: p.rise * t * p.stepY,
     z: c * p.radius,
     rotY: s * p.maxYaw,
     depth,

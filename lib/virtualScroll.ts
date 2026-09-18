@@ -41,6 +41,12 @@ export class VirtualScroll {
   enabled = true;
   /** set to false (e.g. while a card is hovered) to hold the idle drift */
   driftAllowed = true;
+  /**
+   * Unit vector (screen space, y down) from the front card towards the next one. Drags are
+   * projected onto it so pulling along the helix always works; a vertical "swipe up = next"
+   * component is blended in when the helix runs mostly horizontal, so no axis is ever dead.
+   */
+  dragAxis = { x: 1, y: 0 };
   opts: VirtualScrollOptions;
 
   private el: Window | null = null;
@@ -151,13 +157,15 @@ export class VirtualScroll {
     this.lastY = e.clientY;
     this.moved += Math.abs(dx) + Math.abs(dy);
     const k = e.pointerType === "mouse" ? this.opts.drag : this.opts.touch;
-    // both axes count fully: pulling a card down or to the right moves the helix "backwards"
-    const d = dy + dx;
-    this.target -= d * k;
+    const { x: ax, y: ay } = this.dragAxis;
+    // content follows the finger: dragging towards where the previous card sits brings the next one in
+    // the vertical fallback takes the sign of the helix's own slope so it never fights the projection
+    const d = -(ax * dx + ay * dy) - (1 - Math.abs(ay)) * dy * (ay < 0 ? -1 : 1);
+    this.target += d * k;
     const dtMs = Math.max(1, e.timeStamp - this.lastMoveTime);
     this.lastMoveTime = e.timeStamp;
     this.lastInput = performance.now();
-    this.pxVelocity = this.pxVelocity * 0.6 + (-d / dtMs) * 0.4;
+    this.pxVelocity = this.pxVelocity * 0.6 + (d / dtMs) * 0.4;
   };
 
   private onPointerUp = (e: PointerEvent) => {

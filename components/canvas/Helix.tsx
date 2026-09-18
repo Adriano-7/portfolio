@@ -28,6 +28,8 @@ const _e = new THREE.Euler();
 const _m = new THREE.Matrix4();
 const _gq = new THREE.Quaternion();
 const noRaycast = () => {};
+const _p0 = new THREE.Vector3();
+const _p1 = new THREE.Vector3();
 // the list-view preview and the click transition must draw over everything else
 const PREVIEW_RENDER_ORDER = 1000;
 const meshRaycast = THREE.Mesh.prototype.raycast;
@@ -62,6 +64,7 @@ export function Helix({
   const revealStart = useRef<number | null>(null);
   const transition = useRef<{ index: number; t: number; start: number } | null>(null);
   const parallax = useRef({ x: 0, y: 0 });
+  const shear = useRef(0);
   // index of the card currently parked at the list-view preview pose
   const previewIndex = useRef(-1);
 
@@ -164,7 +167,12 @@ export function Helix({
 
     // negated so that scrolling down / arrow down moves forward through the list
     const progress = -scroll.update(dt);
-    const speed = THREE.MathUtils.clamp(-scroll.velocity * 6, -0.35, 0.35);
+    // shear from scroll velocity, per second so it feels the same at 30 and 120 fps, then smoothed;
+    // pointer events arrive unevenly, so dragging gets a heavier filter than wheel/keys
+    const maxShear = mobile ? 0.22 : 0.35;
+    const rawShear = THREE.MathUtils.clamp((-scroll.velocity / dt) * 0.1 * params.rise, -maxShear, maxShear);
+    shear.current = damp(shear.current, rawShear, scroll.isDragging ? 5 : 9, dt);
+    const speed = shear.current;
 
     // the card closest to t = 0 is the one at the front; the caption follows it
     const active = ((Math.round(n / 2 - progress) % n) + n) % n;
@@ -190,6 +198,19 @@ export function Helix({
     const intro = elapsed < 0 ? 0.86 : 0.86 + 0.14 * easeOut(Math.min(1, elapsed / 1.4));
     g.scale.setScalar(intro);
     g.updateMatrixWorld();
+
+    // screen direction from the front card to the next one, for drag projection
+    {
+      const a = cardPose(0, n, params);
+      const b = cardPose(1, n, params);
+      _p0.set(a.x, a.y, a.z).applyMatrix4(g.matrixWorld).project(camera);
+      _p1.set(b.x, b.y, b.z).applyMatrix4(g.matrixWorld).project(camera);
+      const dx = (_p1.x - _p0.x) * state.size.width;
+      const dy = -(_p1.y - _p0.y) * state.size.height;
+      const len = Math.hypot(dx, dy) || 1;
+      scroll.dragAxis.x = dx / len;
+      scroll.dragAxis.y = dy / len;
+    }
 
     // transition timeline
     const tr = transition.current;
