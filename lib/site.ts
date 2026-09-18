@@ -8,8 +8,6 @@ export const site = {
   github: "https://github.com/Adriano-7",
   linkedin: "https://www.linkedin.com/in/adriano-alexandre-machado/",
   cv: "/cv.pdf",
-  thesisPdf:
-    "https://github.com/Adriano-7/msc-thesis-llm-negotiation/blob/main/context/MSc_Thesis/main.pdf",
   url: "https://adrianomachado.pt",
   description:
     "Portfolio of Adriano Machado, MSc in Artificial Intelligence at the University of Porto. LLM negotiation, synthetic data, NLP, computer vision and reinforcement learning projects.",

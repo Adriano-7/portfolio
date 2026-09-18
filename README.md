@@ -18,12 +18,13 @@ pnpm lint
 | `content/projects/*.mdx` | One file per project. Frontmatter drives the card (title, year, tags, accent, `featured`, `repo`, `report`). The body is only rendered for `featured: true` projects at `/work/<slug>`. |
 | `public/projects/<slug>/` | `cover.webp` (1280×800) and `cover-sm.webp` (640×400) for the card, plus any figures the case study uses. |
 | `scripts/covers.mjs`, `scripts/figures.mjs` | Sharp scripts that produced the WebP assets from the original repo figures. |
+| `scripts/avatar.mjs` | Builds `public/avatar.webp` and the favicons in `app/` from `content/profile.jpg`. |
 | `lib/helix.ts` | Pure layout math and the tunable helix parameters (`DESKTOP_HELIX`, `MOBILE_HELIX`). |
 | `lib/virtualScroll.ts` | Wheel / drag / touch / keyboard accumulator that drives the helix. |
 | `components/canvas/CardMaterial.ts` | GLSL for the cards: cover-fit, "denoise" reveal, depth dim + mip-bias blur, hover zoom, rounded corners. |
 | `components/canvas/Helix.tsx` | Scene: poses, hover/click, list-view preview, click-to-case-study transition. |
-| `components/ui/*` | Header, spiral/list toggle, menu, tooltip, loader, thesis badge, list view. |
-| `lib/site.ts` | Name, links, e-mail, thesis PDF, canonical URL. |
+| `components/ui/*` | Header, spiral/list toggle, menu, tooltip, loader, list view. |
+| `lib/site.ts` | Name, links, e-mail, canonical URL. |
 
 ## Adding a project
 

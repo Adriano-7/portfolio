@@ -10,7 +10,6 @@ import { Menu } from "@/components/ui/Menu";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Loader } from "@/components/ui/Loader";
 import { RouteSync } from "@/components/ui/RouteSync";
-import { ThesisBadge } from "@/components/ui/ThesisBadge";
 import { SmoothScroll } from "@/components/ui/SmoothScroll";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -25,7 +24,6 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   const projects = getProjectMetas();
-  const thesis = projects.find((p) => p.slug === "llm-negotiation") ?? projects[0];
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full`} suppressHydrationWarning>
       <body className="min-h-full">
@@ -36,7 +34,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SceneRoot projects={projects} />
         <main className="relative z-10">{children}</main>
         <Header />
-        <ThesisBadge project={thesis} />
         <Tooltip projects={projects} />
         <Menu />
         <Loader count={projects.length} />

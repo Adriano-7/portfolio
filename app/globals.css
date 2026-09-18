@@ -82,11 +82,6 @@ html[data-home="true"] body {
   transform: translateY(-1px);
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 @keyframes fade-up {
   from {
     opacity: 0;
