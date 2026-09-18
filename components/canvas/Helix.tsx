@@ -159,6 +159,8 @@ export function Helix({
 
     if (s.loaded && revealStart.current === null) revealStart.current = state.clock.elapsedTime;
     const elapsed = revealStart.current === null ? -1 : state.clock.elapsedTime - revealStart.current;
+    // idle drift waits for the intro, pauses while a card is hovered and is off for reduced motion
+    scroll.driftAllowed = elapsed > 2 && !s.hovered && !s.reducedMotion;
 
     // negated so that scrolling down / arrow down moves forward through the list
     const progress = -scroll.update(dt);

@@ -12,6 +12,8 @@ export type VirtualScrollOptions = {
   commit: number; // drag distance (in cards) after which a release always advances one card
   flick: number; // extra cards per px/ms of release velocity
   maxFlick: number; // cap on cards added by a flick
+  drift: number; // cards per second the helix creeps forward while idle (0 disables)
+  driftDelay: number; // ms without input before drifting starts
 };
 
 const DEFAULTS: VirtualScrollOptions = {
@@ -24,6 +26,8 @@ const DEFAULTS: VirtualScrollOptions = {
   commit: 0.08,
   flick: 1.1,
   maxFlick: 2,
+  drift: 0.045,
+  driftDelay: 2500,
 };
 
 function clamp(x: number, a: number, b: number) {
@@ -35,6 +39,8 @@ export class VirtualScroll {
   current = 0;
   velocity = 0;
   enabled = true;
+  /** set to false (e.g. while a card is hovered) to hold the idle drift */
+  driftAllowed = true;
   opts: VirtualScrollOptions;
 
   private el: Window | null = null;
@@ -47,6 +53,7 @@ export class VirtualScroll {
   private lastMoveTime = 0;
   private pxVelocity = 0; // smoothed px/ms along the drag axis
   private snapTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastInput = 0;
 
   constructor(opts: Partial<VirtualScrollOptions> = {}) {
     this.opts = { ...DEFAULTS, ...opts };
@@ -82,6 +89,15 @@ export class VirtualScroll {
   /** advance the smoothing; call once per frame */
   update(dt = 1 / 60) {
     const prev = this.current;
+    if (
+      this.enabled &&
+      this.driftAllowed &&
+      this.opts.drift &&
+      !this.dragging &&
+      performance.now() - this.lastInput > this.opts.driftDelay
+    ) {
+      this.target += this.opts.drift * dt;
+    }
     // frame-rate independent lerp
     const k = 1 - Math.pow(1 - this.opts.ease, dt * 60);
     this.current += (this.target - this.current) * k;
@@ -91,6 +107,7 @@ export class VirtualScroll {
   }
 
   private scheduleSnap() {
+    this.lastInput = performance.now();
     if (this.snapTimer) clearTimeout(this.snapTimer);
     if (!this.opts.snap) return;
     this.snapTimer = setTimeout(() => {
@@ -120,6 +137,7 @@ export class VirtualScroll {
     this.lastY = e.clientY;
     this.moved = 0;
     this.dragStart = Math.round(this.target);
+    this.lastInput = performance.now();
     this.lastMoveTime = e.timeStamp;
     this.pxVelocity = 0;
     if (this.snapTimer) clearTimeout(this.snapTimer);
@@ -138,6 +156,7 @@ export class VirtualScroll {
     this.target -= d * k;
     const dtMs = Math.max(1, e.timeStamp - this.lastMoveTime);
     this.lastMoveTime = e.timeStamp;
+    this.lastInput = performance.now();
     this.pxVelocity = this.pxVelocity * 0.6 + (-d / dtMs) * 0.4;
   };
 
@@ -154,6 +173,7 @@ export class VirtualScroll {
     // a deliberate but short drag still commits to the next card in that direction
     if (end === this.dragStart && Math.abs(delta) >= this.opts.commit) end = this.dragStart + Math.sign(delta);
     this.target = end;
+    this.lastInput = performance.now();
   };
 
   private onKey = (e: KeyboardEvent) => {
@@ -166,5 +186,6 @@ export class VirtualScroll {
     if (!d) return;
     e.preventDefault();
     this.target = Math.round(this.target) + d;
+    this.lastInput = performance.now();
   };
 }

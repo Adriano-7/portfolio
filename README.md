@@ -34,7 +34,7 @@ pnpm lint
 
 ## Behaviour notes
 
-- Home page: wheel, drag, touch and arrow keys rotate the helix; the bottom-left caption names the front card (or the hovered one); click opens the case study (featured) or the GitHub repo.
+- Home page: the helix drifts slowly while idle; wheel, drag, touch and arrow keys rotate it; the bottom-left caption names the front card (or the hovered one); click opens the case study (featured) or the GitHub repo.
 - `?view=list` opens the list view directly. Reduced-motion users and browsers without WebGL get the list view.
 - The canvas lives in the root layout so textures survive navigation.
 
