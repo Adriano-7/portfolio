@@ -84,7 +84,8 @@ export type CardUniformName =
   | "uDepth"
   | "uOpacity"
   | "uScrollSpeed"
-  | "uBend";
+  | "uBend"
+  | "uRadius";
 
 export class CardMaterial extends THREE.ShaderMaterial {
   constructor(opts: {

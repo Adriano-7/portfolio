@@ -32,7 +32,30 @@ const _p0 = new THREE.Vector3();
 const _p1 = new THREE.Vector3();
 // the list-view preview and the click transition must draw over everything else
 const PREVIEW_RENDER_ORDER = 1000;
+// the clicked card flies onto this world-space plane, where it lines up with the case study cover
+const FLIGHT_Z = 2.5;
+const FLIGHT_TIME = 1.5;
+// matches rounded-2xl on the case study cover
+const COVER_RADIUS_PX = 16;
 const meshRaycast = THREE.Mesh.prototype.raycast;
+
+type Flight = {
+  index: number;
+  t: number;
+  start: number;
+  /** pose (group-local) the card had when it was clicked */
+  from: { pos: THREE.Vector3; quat: THREE.Quaternion; scale: number };
+  /** world-space centre on the flight plane; provisional until the cover is measured */
+  target: THREE.Vector3;
+  targetScale: number;
+  /** corner radius in plane units that matches the cover's rounded corners */
+  radius: number;
+  found: boolean;
+  navigated: boolean;
+  /** the route has left "/" at least once (so returning home means "back") */
+  left: boolean;
+  landedAt: number;
+};
 
 function damp(cur: number, target: number, k: number, dt: number) {
   return cur + (target - cur) * (1 - Math.exp(-k * dt));
@@ -62,7 +85,7 @@ export function Helix({
 
   // start of the reveal animation (clock seconds), set once textures are in
   const revealStart = useRef<number | null>(null);
-  const transition = useRef<{ index: number; t: number; start: number } | null>(null);
+  const transition = useRef<Flight | null>(null);
   const parallax = useRef({ x: 0, y: 0 });
   const shear = useRef(0);
   // index of the card currently parked at the list-view preview pose
@@ -134,7 +157,19 @@ export function Helix({
     if (p.featured) {
       s.setTransitioning(p.slug);
       s.setHovered(null);
-      transition.current = { index, t: 0, start: -1 };
+      transition.current = {
+        index,
+        t: 0,
+        start: -1,
+        from: { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), scale: 1 },
+        target: new THREE.Vector3(0, mobile ? 0.5 : 0.3, FLIGHT_Z),
+        targetScale: 1.6,
+        radius: 0.045,
+        found: false,
+        navigated: false,
+        left: false,
+        landedAt: -1,
+      };
     } else {
       window.open(p.repo, "_blank", "noopener,noreferrer");
     }
@@ -212,14 +247,58 @@ export function Helix({
       scroll.dragAxis.y = dy / len;
     }
 
-    // transition timeline
-    const tr = transition.current;
+    // click transition: the card flies into the case study cover, which takes over once it lands
+    let tr = transition.current;
     if (tr) {
-      if (tr.start < 0) tr.start = state.clock.elapsedTime;
-      tr.t = Math.min(1, (state.clock.elapsedTime - tr.start) / 0.75);
-      if (tr.t >= 1) {
-        s.requestNavigation(`/work/${projects[tr.index].slug}`);
+      const now = state.clock.elapsedTime;
+      const slug = projects[tr.index].slug;
+      if (tr.start < 0) {
+        tr.start = now;
+        const c = rt[tr.index];
+        tr.from.pos.copy(c.pos);
+        tr.from.quat.copy(c.quat);
+        tr.from.scale = c.scale;
+      }
+      tr.t = Math.min(1, (now - tr.start) / FLIGHT_TIME);
+      // navigate almost at once so the page is mounted (and measurable) well before the card arrives
+      if (!tr.navigated && now - tr.start > 0.08) {
+        s.requestNavigation(`/work/${slug}`);
+        tr.navigated = true;
+      }
+      if (!onHome) tr.left = true;
+
+      const el = onHome ? null : document.querySelector<HTMLElement>(`[data-hero-cover="${slug}"]`);
+      if (el) {
+        // DOM rect -> world pose on the flight plane (camera looks down -z from the origin's axis)
+        const r = el.getBoundingClientRect();
+        const cam = camera as THREE.PerspectiveCamera;
+        const visH = 2 * (cam.position.z - FLIGHT_Z) * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
+        const pxToWorld = visH / state.size.height;
+        const wx = (r.left + r.width / 2 - state.size.width / 2) * pxToWorld;
+        const wy = -(r.top + r.height / 2 - state.size.height / 2) * pxToWorld;
+        const ws = (r.width * pxToWorld) / params.cardW;
+        tr.found = true;
+        // ease over from the provisional target instead of jumping to the first measurement
+        const k = tr.t >= 1 ? 1 : 1 - Math.exp(-12 * dt);
+        tr.target.x += (wx - tr.target.x) * k;
+        tr.target.y += (wy - tr.target.y) * k;
+        tr.targetScale += (ws - tr.targetScale) * k;
+        tr.radius = (COVER_RADIUS_PX * pxToWorld) / ws;
+      }
+
+      if (tr.t >= 1 && tr.landedAt < 0 && (tr.found || now - tr.start > 3)) {
+        tr.landedAt = now;
+        // reveals the DOM cover underneath/over the card
+        s.setTransitioning(null);
+      }
+      // hold the card until the cover has faded in over it, then drop it; also bail out on "back"
+      if ((tr.landedAt >= 0 && now - tr.landedAt > 0.35) || (tr.left && onHome)) {
+        const c = rt[tr.index];
+        c.alpha = 0;
+        c.mat.setU("uBend", params.bend);
+        c.mat.setU("uRadius", 0.045);
         transition.current = null;
+        tr = null;
       }
     }
 
@@ -253,22 +332,25 @@ export function Helix({
         hold = true;
       }
 
-      if (tr && tr.index === i) {
-        const k = easeInOut(tr.t);
-        worldToLocalPose(g, 0, mobile ? 0.9 : 0.55, 3.6, 0, 0);
-        tx = THREE.MathUtils.lerp(tx, _v.x, k);
-        ty = THREE.MathUtils.lerp(ty, _v.y, k);
-        tz = THREE.MathUtils.lerp(tz, _v.z, k);
-        tscale = THREE.MathUtils.lerp(tscale, 1.55, k);
-        _q.slerp(_q2, k);
+      const flying = !!tr && tr.index === i;
+      if (flying) {
         alphaTarget = 1;
       } else if (tr) {
-        alphaTarget *= 1 - easeInOut(tr.t);
+        alphaTarget *= 1 - easeInOut(Math.min(1, tr.t * 2));
       }
 
       // smooth toward target; snap on wrap jumps
       const jump = Math.abs(ty - c.pos.y) > params.stepY * 3 || snap;
-      if (hold && c.alpha >= 0.01) {
+      if (flying) {
+        // scripted path from where the card was clicked to the (live) cover position
+        const k = easeInOut(tr!.t);
+        worldToLocalPose(g, tr!.target.x, tr!.target.y, tr!.target.z, 0, 0);
+        c.pos.lerpVectors(tr!.from.pos, _v, k);
+        c.quat.slerpQuaternions(tr!.from.quat, _q2, k);
+        c.scale = THREE.MathUtils.lerp(tr!.from.scale, tr!.targetScale / g.scale.x, k);
+        c.mat.setU("uBend", params.bend * (1 - k));
+        c.mat.setU("uRadius", THREE.MathUtils.lerp(0.045, tr!.radius, k));
+      } else if (hold && c.alpha >= 0.01) {
         // keep the current pose; only the alpha changes
       } else if (jump || c.alpha < 0.01) {
         c.pos.set(tx, ty, tz);
@@ -286,7 +368,7 @@ export function Helix({
       // reveal & alpha
       const revealTarget = elapsed < 0 ? 0 : THREE.MathUtils.clamp((elapsed - i * 0.07) / 1.1, 0, 1);
       c.reveal = s.reducedMotion ? (elapsed < 0 ? 0 : 1) : easeOut(revealTarget);
-      c.alpha = damp(c.alpha, alphaTarget, hold ? 14 : 8, dt);
+      c.alpha = flying ? damp(c.alpha, 1, 14, dt) : damp(c.alpha, alphaTarget, hold ? 14 : 8, dt);
       const zoomTarget = s.hovered === projects[i].slug && (spiralVisible || hoveredInList) ? 1 : 0;
       c.zoom = damp(c.zoom, zoomTarget, 10, dt);
 
@@ -294,15 +376,15 @@ export function Helix({
       c.mesh.quaternion.copy(c.quat);
       c.mesh.scale.setScalar(c.scale);
       c.mesh.visible = c.alpha > 0.005;
-      c.mesh.renderOrder = hoveredInList || (tr && tr.index === i) ? PREVIEW_RENDER_ORDER : 0;
+      c.mesh.renderOrder = hoveredInList || flying ? PREVIEW_RENDER_ORDER : 0;
       // only solid cards may be hovered/clicked
       c.mesh.raycast = c.alpha > 0.55 && pose.depth < 0.8 ? meshRaycast : noRaycast;
 
-      c.mat.setU("uDepth", hoveredInList || (tr && tr.index === i) ? 0 : pose.depth);
+      c.mat.setU("uDepth", hoveredInList || flying ? 0 : pose.depth);
       c.mat.setU("uOpacity", c.alpha * (elapsed < 0 ? 0 : 1));
       c.mat.setU("uReveal", c.reveal);
       c.mat.setU("uZoom", c.zoom);
-      c.mat.setU("uScrollSpeed", hoveredInList ? 0 : speed);
+      c.mat.setU("uScrollSpeed", hoveredInList || flying ? 0 : speed);
     }
   });
 

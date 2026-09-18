@@ -16,7 +16,8 @@ export function RouteSync() {
     s.setPathname(pathname);
     s.setHovered(null);
     s.setMenuOpen(false);
-    if (pathname !== "/") s.setTransitioning(null);
+    // the helix clears it once the card has landed on the case study; coming home cancels it
+    if (pathname === "/") s.setTransitioning(null);
     document.documentElement.dataset.home = pathname === "/" ? "true" : "false";
   }, [pathname]);
 

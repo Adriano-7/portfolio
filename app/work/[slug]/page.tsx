@@ -5,6 +5,7 @@ import { MDXRemote } from "next-mdx-remote/rsc";
 import { getProject, getProjects } from "@/lib/projects";
 import { mdxComponents } from "@/components/mdx";
 import { Reveal } from "@/components/ui/Reveal";
+import { HeroCover } from "@/components/ui/HeroCover";
 
 export const dynamicParams = false;
 
@@ -76,10 +77,7 @@ export default async function WorkPage({ params }: PageProps<"/work/[slug]">) {
           )}
         </div>
 
-        <div className="mt-12 overflow-hidden rounded-2xl border border-white/10 bg-white shadow-2xl">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={project.cover} alt="" width={1280} height={800} className="block w-full" />
-        </div>
+        <HeroCover slug={project.slug} src={project.cover} />
 
         {project.credits && <p className="mono mt-4 normal-case tracking-normal text-muted-2">{project.credits}</p>}
 
