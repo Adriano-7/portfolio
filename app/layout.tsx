@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { getProjectMetas } from "@/lib/projects";
 import { site } from "@/lib/site";
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Header />
         <Menu />
         <Loader count={projects.length} />
+        <Analytics />
       </body>
     </html>
   );
