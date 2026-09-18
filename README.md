@@ -1,4 +1,4 @@
-# Adriano Machado — portfolio
+# Portfolio
 
 A personal site for machine-learning work: a 3D helix of project cards you scroll through, a list view, and case-study pages. Built with Next.js 16, React Three Fiber and GSAP.
 

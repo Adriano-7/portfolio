@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
-  title: { default: `${site.name} — ML portfolio`, template: `%s — ${site.name}` },
+  title: { default: `${site.name} — portfolio`, template: `%s — ${site.name}` },
   description: site.description,
   openGraph: { type: "website", siteName: site.name, title: site.name, description: site.description },
 };
