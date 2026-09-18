@@ -9,16 +9,26 @@ export type VirtualScrollOptions = {
   ease: number; // lerp factor per frame at 60fps
   snap: boolean;
   snapDelay: number; // ms of idle before snapping to the nearest card
+  commit: number; // drag distance (in cards) after which a release always advances one card
+  flick: number; // extra cards per px/ms of release velocity
+  maxFlick: number; // cap on cards added by a flick
 };
 
 const DEFAULTS: VirtualScrollOptions = {
   wheel: 1 / 520,
-  touch: 1 / 220,
-  drag: 1 / 420,
+  touch: 1 / 130,
+  drag: 1 / 140,
   ease: 0.09,
   snap: true,
   snapDelay: 420,
+  commit: 0.08,
+  flick: 1.1,
+  maxFlick: 2,
 };
+
+function clamp(x: number, a: number, b: number) {
+  return Math.min(b, Math.max(a, x));
+}
 
 export class VirtualScroll {
   target = 0;
@@ -33,6 +43,9 @@ export class VirtualScroll {
   private lastX = 0;
   private lastY = 0;
   private moved = 0;
+  private dragStart = 0; // target when the drag began
+  private lastMoveTime = 0;
+  private pxVelocity = 0; // smoothed px/ms along the drag axis
   private snapTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(opts: Partial<VirtualScrollOptions> = {}) {
@@ -106,6 +119,9 @@ export class VirtualScroll {
     this.lastX = e.clientX;
     this.lastY = e.clientY;
     this.moved = 0;
+    this.dragStart = Math.round(this.target);
+    this.lastMoveTime = e.timeStamp;
+    this.pxVelocity = 0;
     if (this.snapTimer) clearTimeout(this.snapTimer);
   };
 
@@ -117,15 +133,27 @@ export class VirtualScroll {
     this.lastY = e.clientY;
     this.moved += Math.abs(dx) + Math.abs(dy);
     const k = e.pointerType === "mouse" ? this.opts.drag : this.opts.touch;
-    // dragging the content down should move the helix "backwards"
-    this.target -= (dy + dx * 0.35) * k;
+    // both axes count fully: pulling a card down or to the right moves the helix "backwards"
+    const d = dy + dx;
+    this.target -= d * k;
+    const dtMs = Math.max(1, e.timeStamp - this.lastMoveTime);
+    this.lastMoveTime = e.timeStamp;
+    this.pxVelocity = this.pxVelocity * 0.6 + (-d / dtMs) * 0.4;
   };
 
   private onPointerUp = (e: PointerEvent) => {
     if (e.pointerId !== this.pointerId) return;
     this.dragging = false;
     this.pointerId = null;
-    this.scheduleSnap();
+    if (this.snapTimer) clearTimeout(this.snapTimer);
+    // a stale velocity from a pause before release should not count as a flick
+    const stale = e.timeStamp - this.lastMoveTime > 80;
+    const flick = stale ? 0 : clamp(this.pxVelocity * this.opts.flick, -this.opts.maxFlick, this.opts.maxFlick);
+    const delta = this.target - this.dragStart;
+    let end = Math.round(this.target + flick);
+    // a deliberate but short drag still commits to the next card in that direction
+    if (end === this.dragStart && Math.abs(delta) >= this.opts.commit) end = this.dragStart + Math.sign(delta);
+    this.target = end;
   };
 
   private onKey = (e: KeyboardEvent) => {

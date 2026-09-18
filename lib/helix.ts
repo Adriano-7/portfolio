@@ -25,10 +25,12 @@ export const DESKTOP_HELIX: HelixParams = {
   bend: 0.07,
 };
 
+// Neighbouring cards must not overlap on screen: the card entering the front and the one
+// leaving it swap draw order as they pass, which pops visibly if they share any pixels.
 export const MOBILE_HELIX: HelixParams = {
   ...DESKTOP_HELIX,
-  radius: 1.55,
-  stepY: 0.62,
+  radius: 1.7,
+  stepY: 0.88,
   tilt: [-0.1, 0, -0.18],
   cardW: 1.35,
   cardH: 0.85,

@@ -28,6 +28,8 @@ const _e = new THREE.Euler();
 const _m = new THREE.Matrix4();
 const _gq = new THREE.Quaternion();
 const noRaycast = () => {};
+// the list-view preview and the click transition must draw over everything else
+const PREVIEW_RENDER_ORDER = 1000;
 const meshRaycast = THREE.Mesh.prototype.raycast;
 
 function damp(cur: number, target: number, k: number, dt: number) {
@@ -269,6 +271,7 @@ export function Helix({
       c.mesh.quaternion.copy(c.quat);
       c.mesh.scale.setScalar(c.scale);
       c.mesh.visible = c.alpha > 0.005;
+      c.mesh.renderOrder = hoveredInList || (tr && tr.index === i) ? PREVIEW_RENDER_ORDER : 0;
       // only solid cards may be hovered/clicked
       c.mesh.raycast = c.alpha > 0.55 && pose.depth < 0.8 ? meshRaycast : noRaycast;
 
