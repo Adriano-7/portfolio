@@ -18,9 +18,7 @@ const covers = [
   { slug: "network-science",          file: "ns-gcn-emb.png",       fit: "cover" },
   { slug: "mean-field-marl",          file: "mf-battle.png",        fit: "cover" },
   { slug: "esn-forecasting",          file: "ts-forecast.png",      fit: "contain", bg: "#ffffff" },
-  { slug: "invoice-reviewer",         file: "inv-dashboard.png",    fit: "cover" },
   { slug: "health-insurance",         file: "icd-corr.png",         fit: "contain", bg: "#ffffff" },
-  { slug: "webgl-bee",                file: "cg-bee4.png",          fit: "cover" },
 ];
 
 for (const c of covers) {

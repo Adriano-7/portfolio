@@ -72,13 +72,7 @@ export default function AboutPage() {
             I recently finished my MSc in Artificial Intelligence at the University of Porto. My thesis
             benchmarked open-weight language models as negotiation agents and measured whether inference-time
             techniques like Self-Refine and team deliberation are worth their cost. Before that I studied how
-            class imbalance degrades synthetic tabular data generation as a student researcher with LIACC and
-            Fraunhofer AICOS.
-          </p>
-          <p>
-            I like problems where the model is only half the work: building the benchmark, running the sweep
-            on a cluster, and being honest about what the numbers actually say. Most of the projects on this
-            site come with the full experiment code and a written report.
+            class imbalance degrades synthetic tabular data generation as a student researcher.
           </p>
         </div>
 

@@ -55,7 +55,8 @@ function load(file: string): Project {
 let cache: Project[] | null = null;
 
 export function getProjects(): Project[] {
-  if (!cache) {
+  // re-read in dev so adding or deleting an .mdx file shows up without restarting the server
+  if (!cache || process.env.NODE_ENV === "development") {
     cache = fs
       .readdirSync(DIR)
       .filter((f) => f.endsWith(".mdx"))
