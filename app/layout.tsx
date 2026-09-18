@@ -7,7 +7,6 @@ import { site } from "@/lib/site";
 import { SceneRoot } from "@/components/canvas/SceneRoot";
 import { Header } from "@/components/ui/Header";
 import { Menu } from "@/components/ui/Menu";
-import { Tooltip } from "@/components/ui/Tooltip";
 import { Loader } from "@/components/ui/Loader";
 import { RouteSync } from "@/components/ui/RouteSync";
 import { SmoothScroll } from "@/components/ui/SmoothScroll";
@@ -34,7 +33,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SceneRoot projects={projects} />
         <main className="relative z-10">{children}</main>
         <Header />
-        <Tooltip projects={projects} />
         <Menu />
         <Loader count={projects.length} />
       </body>

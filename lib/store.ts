@@ -7,6 +7,12 @@ type State = {
   setView: (v: View) => void;
   hovered: string | null;
   setHovered: (slug: string | null) => void;
+  /** index of the card at the front of the helix */
+  active: number;
+  setActive: (i: number) => void;
+  /** slug the caption asked the helix to open (same transition as a card click) */
+  openRequest: string | null;
+  requestOpen: (slug: string | null) => void;
   loaded: boolean;
   setLoaded: (v: boolean) => void;
   menuOpen: boolean;
@@ -30,6 +36,10 @@ export const useStore = create<State>((set) => ({
   setView: (view) => set({ view }),
   hovered: null,
   setHovered: (hovered) => set({ hovered }),
+  active: 0,
+  setActive: (active) => set({ active }),
+  openRequest: null,
+  requestOpen: (openRequest) => set({ openRequest }),
   loaded: false,
   setLoaded: (loaded) => set({ loaded }),
   menuOpen: false,

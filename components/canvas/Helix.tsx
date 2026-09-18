@@ -46,17 +46,22 @@ export function Helix({
   const textures = useTexture(projects.map((p) => (mobile ? p.coverSm : p.cover)));
   const group = useRef<THREE.Group>(null);
   const runtime = useRef<Runtime[]>([]);
-  const scrollRef = useRef<VirtualScroll | null>(null);
-  if (scrollRef.current == null) {
-    scrollRef.current = new VirtualScroll();
-  }
   const camera = useThree((s) => s.camera);
   const n = projects.length;
+  const scrollRef = useRef<VirtualScroll | null>(null);
+  if (scrollRef.current == null) {
+    const sc = new VirtualScroll();
+    // start with the first project at the front (t = 0 when i + progress = n / 2)
+    sc.target = sc.current = -n / 2;
+    scrollRef.current = sc;
+  }
 
   // start of the reveal animation (clock seconds), set once textures are in
   const revealStart = useRef<number | null>(null);
   const transition = useRef<{ index: number; t: number; start: number } | null>(null);
   const parallax = useRef({ x: 0, y: 0 });
+  // index of the card currently parked at the list-view preview pose
+  const previewIndex = useRef(-1);
 
   const geometry = useMemo(
     () => new THREE.PlaneGeometry(params.cardW, params.cardH, 24, 24),
@@ -118,9 +123,7 @@ export function Helix({
     const s = useStore.getState();
     if (s.pathname === "/" && s.view === "spiral") s.setHovered(null);
   };
-  const onClick = (index: number) => (e: ThreeEvent<MouseEvent>) => {
-    e.stopPropagation();
-    if (!interactive() || scrollRef.current!.isDragging) return;
+  const open = (index: number) => {
     const p = projects[index];
     const s = useStore.getState();
     if (p.featured) {
@@ -130,6 +133,11 @@ export function Helix({
     } else {
       window.open(p.repo, "_blank", "noopener,noreferrer");
     }
+  };
+  const onClick = (index: number) => (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    if (!interactive() || scrollRef.current!.isDragging) return;
+    open(index);
   };
 
   useFrame((state, dtRaw) => {
@@ -143,14 +151,27 @@ export function Helix({
     const onHome = s.pathname === "/";
     const spiralVisible = onHome && s.view === "spiral" && !s.transitioning;
     const listMode = onHome && s.view === "list";
+    if (!listMode) previewIndex.current = -1;
     const scroll = scrollRef.current!;
     scroll.enabled = spiralVisible && !s.menuOpen && s.loaded;
 
     if (s.loaded && revealStart.current === null) revealStart.current = state.clock.elapsedTime;
     const elapsed = revealStart.current === null ? -1 : state.clock.elapsedTime - revealStart.current;
 
-    const progress = scroll.update(dt);
-    const speed = THREE.MathUtils.clamp(scroll.velocity * 6, -0.35, 0.35);
+    // negated so that scrolling down / arrow down moves forward through the list
+    const progress = -scroll.update(dt);
+    const speed = THREE.MathUtils.clamp(-scroll.velocity * 6, -0.35, 0.35);
+
+    // the card closest to t = 0 is the one at the front; the caption follows it
+    const active = ((Math.round(n / 2 - progress) % n) + n) % n;
+    if (active !== s.active) s.setActive(active);
+
+    // caption click: run the same transition as clicking the card
+    if (s.openRequest) {
+      const idx = projects.findIndex((p) => p.slug === s.openRequest);
+      s.requestOpen(null);
+      if (idx >= 0 && interactive()) open(idx);
+    }
 
     // group tilt + pointer parallax + intro scale
     const px = s.reducedMotion ? 0 : state.pointer.x;
@@ -185,6 +206,7 @@ export function Helix({
       let tx = pose.x, ty = pose.y, tz = pose.z, tscale = pose.scale;
       let alphaTarget = pose.fade;
       let snap = false;
+      let hold = false;
       _e.set(0, pose.rotY, 0);
       _q.setFromEuler(_e);
 
@@ -196,7 +218,14 @@ export function Helix({
         worldToLocalPose(g, mobile ? 0 : 2.3, mobile ? -1.2 : 0.15, 3.2, 0, -0.14);
         tx = _v.x; ty = _v.y; tz = _v.z; tscale = mobile ? 0.9 : 1.15; alphaTarget = 1;
         _q.copy(_q2);
-        if (c.alpha < 0.02) snap = true;
+        // appear in place rather than flying in from the spiral
+        if (previewIndex.current !== i) {
+          previewIndex.current = i;
+          snap = true;
+        }
+      } else if (listMode) {
+        // fade out where the card is instead of drifting back to its spiral pose
+        hold = true;
       }
 
       if (tr && tr.index === i) {
@@ -214,7 +243,9 @@ export function Helix({
 
       // smooth toward target; snap on wrap jumps
       const jump = Math.abs(ty - c.pos.y) > params.stepY * 3 || snap;
-      if (jump || c.alpha < 0.01) {
+      if (hold && c.alpha >= 0.01) {
+        // keep the current pose; only the alpha changes
+      } else if (jump || c.alpha < 0.01) {
         c.pos.set(tx, ty, tz);
         c.quat.copy(_q);
         c.scale = tscale;
@@ -230,7 +261,7 @@ export function Helix({
       // reveal & alpha
       const revealTarget = elapsed < 0 ? 0 : THREE.MathUtils.clamp((elapsed - i * 0.07) / 1.1, 0, 1);
       c.reveal = s.reducedMotion ? (elapsed < 0 ? 0 : 1) : easeOut(revealTarget);
-      c.alpha = damp(c.alpha, alphaTarget, 8, dt);
+      c.alpha = damp(c.alpha, alphaTarget, hold ? 14 : 8, dt);
       const zoomTarget = s.hovered === projects[i].slug && (spiralVisible || hoveredInList) ? 1 : 0;
       c.zoom = damp(c.zoom, zoomTarget, 10, dt);
 

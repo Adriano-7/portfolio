@@ -23,7 +23,7 @@ pnpm lint
 | `lib/virtualScroll.ts` | Wheel / drag / touch / keyboard accumulator that drives the helix. |
 | `components/canvas/CardMaterial.ts` | GLSL for the cards: cover-fit, "denoise" reveal, depth dim + mip-bias blur, hover zoom, rounded corners. |
 | `components/canvas/Helix.tsx` | Scene: poses, hover/click, list-view preview, click-to-case-study transition. |
-| `components/ui/*` | Header, spiral/list toggle, menu, tooltip, loader, list view. |
+| `components/ui/*` | Header, spiral/list toggle, menu, loader, active-card caption, list view. |
 | `lib/site.ts` | Name, links, e-mail, canonical URL. |
 
 ## Adding a project
@@ -34,7 +34,7 @@ pnpm lint
 
 ## Behaviour notes
 
-- Home page: wheel, drag, touch and arrow keys rotate the helix; hover shows a tooltip; click opens the case study (featured) or the GitHub repo.
+- Home page: wheel, drag, touch and arrow keys rotate the helix; the bottom-left caption names the front card (or the hovered one); click opens the case study (featured) or the GitHub repo.
 - `?view=list` opens the list view directly. Reduced-motion users and browsers without WebGL get the list view.
 - The canvas lives in the root layout so textures survive navigation.
 
