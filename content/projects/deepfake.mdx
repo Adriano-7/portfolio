@@ -10,35 +10,74 @@ accent: "#D86BB0"
 order: 5
 grade: 19/20
 repo: https://github.com/Adriano-7/fcup-deep-reinforcement-learning
+report: https://github.com/Adriano-7/fcup-deep-reinforcement-learning/blob/main/report.pdf
+reportLabel: Read the report
 credits: With Francisco da Ana and Tomás Vicente · Deep and Reinforcement Learning, FEUP/FCUP
 ---
 
 <Lead>
-DeepFakeFace holds 120k face images: real photographs plus fakes from three diffusion pipelines (Stable Diffusion 1.5, SD Inpainting, InsightFace). We built detectors, then tried to build the generators.
+[DeepFakeFace](https://huggingface.co/datasets/OpenRL/DeepFakeFace) holds 120k face images: 30k real photographs from IMDB-WIKI and 90k fakes, 30k each from Stable Diffusion 1.5, SD Inpainting and InsightFace. We built detectors, then tried to build the generators. Detection turned out to be close to solved; generation, in part due to our limited compute budget, did not get anywhere near it.
 </Lead>
 
 <Figure src="/projects/deepfake/dataset.webp" alt="Samples from the DeepFakeFace dataset" caption="Fakes from three diffusion pipelines." />
 
+## The dataset
+
+Before any modelling, the image geometry is worth a look. Every fake in the corpus is exactly 512×512. The real photographs run from roughly 100 to 1300 pixels a side, at aspect ratios between 0.5 and 1.9.
+
+<Figure src="/projects/deepfake/dimensions.webp" alt="Scatter of image dimensions and histogram of aspect ratios, real versus fake" caption="All 90k fakes collapse to a single point: 512×512, aspect ratio 1.0. The 30k real images spread across the whole plane." />
+
+Training resized and centre-cropped everything to a common size, so the classifiers never saw raw dimensions. It is still worth flagging, because it is a property of how the dataset was built rather than of what a deepfake looks like, and squashing a non-square photograph into a square crop leaves a distortion that no fake in this corpus carries.
+
 ## Detection
 
-The 3:1 fake/real imbalance was handled by undersampling to 10k fakes per generator. Pre-trained backbones got a new binary head; two CNNs were trained from scratch.
+Split 70/15/15, cross-entropy loss, 3:1 fake/real imbalance handled by undersampling to 10k fakes per generator, for a balanced 30k/30k. Pre-trained backbones got a new binary head; two CNNs were trained from scratch.
 
 <Table
   head={["Model", "Test accuracy", "Note"]}
   rows={[
     ["EfficientNet-B0", "99.55%", "Best overall, converged within 10 epochs"],
+    ["Improved CNN (4 blocks, BN, dropout)", "99.03%", "Sigmoid single-output variant; 98.35% with two logits"],
     ["DenseNet161", "98.85%", "Dense skip connections reuse features well"],
-    ["Custom CNN (4 blocks, BN, dropout)", "98.35%", "No ImageNet weights at all"],
     ["ResNet50", "98.70%", "Adam beat SGD across every ResNet variant"],
-    ["ViT-B/16", "93.74%", "Needed a much smaller LR and batch"],
+    ["ViT-B/16", "93.74%", "Needed a learning rate 10× below the CNNs"],
+    ["ViT-B/32", "87.82%", "Larger patches blur fine detail; needed 1e-6"],
     ["Baseline CNN (3 blocks)", "71.70%", "Confidence decayed without classic overfitting"],
   ]}
 />
 
+Three things came out of the sweep.
+
+**Adam beat SGD on every ResNet configuration**, and not narrowly: Adam's runs cluster around a 98.5% median with little spread, while SGD's scatter from 92% to 98%. The best configuration, ResNet50 with Adam at batch size 128, reached 98.69%.
+
+**The ViTs needed drastically lower learning rates.** 1e-3 works for every CNN here. ViT-B/16 only converged at 1e-4, and ViT-B/32 needed 1e-6, three orders of magnitude below the CNNs. Both still finished behind every convolutional model, which is the expected result at this dataset size and training budget.
+
+**Pre-training buys convergence speed more than final accuracy.** The custom CNN gets within 0.5 points of EfficientNet-B0 with no ImageNet weights at all, but it takes 100 noisy epochs to do what the pre-trained backbones do in under ten.
+
+<Figure src="/projects/deepfake/training-dynamics.webp" alt="Training and validation curves for EfficientNet, DenseNet, ResNet18 and the custom CNN" caption="Pre-trained backbones start near 0.9 and converge inside ten epochs. The scratch-trained CNN (red) climbs for 100 epochs, with validation swinging hard the whole way." />
+
+The baseline CNN failed in an unusual way. Its validation accuracy sits flat at about 71% for 150 epochs while its validation loss climbs from 0.8 past 2.0 and its training loss keeps falling. Accuracy never degrades, so this is not textbook overfitting. The model keeps picking the right class and simply grows less and less confident about it, with the margin between classes eroding underneath a stable arg-max.
+
 ## Generation
 
-- **MLP-GAN** baseline: the classic volatility → equilibrium → divergence curve; after epoch 800 the discriminator wins and samples collapse into saturated noise.
-- **DCGAN** with transposed convolutions and the paper's `N(0, 0.02)` init: clearly face-like structure at 64×64.
-- **DDPM**, twice: a custom 5-level U-Net with sinusoidal time embeddings (T = 300, L1 loss, 900 epochs) gave diverse but desaturated faces; a `diffusers` UNet2DModel at 128×128 with a squared-cosine schedule produced far more vivid, coherent samples after only 30 epochs, at roughly 10 GPU-hours per 30 epochs.
+**MLP-GAN** was the baseline: a 100-dimensional latent vector mapped through fully connected layers to a flattened 12,288-dimensional image (64×64×3), Tanh output, 1500 epochs of Adam at 2e-4, batch size 512, BCE loss.
 
-<Figure src="/projects/deepfake/generated.webp" alt="Grid of generated faces" caption="Generated samples at epoch 1500." />
+<Figure src="/projects/deepfake/mlp-gan.webp" alt="Animation of MLP-GAN samples evolving from epoch 1 to 1500" caption="1500 epochs of MLP-GAN in one loop. Faces emerge around epoch 300, hold until roughly 800, then dissolve into saturated colour noise as the discriminator pulls ahead." />
+
+The loss curves tell the same story as the animation. After an initial volatile phase the two networks hold a rough equilibrium between epochs 600 and 800, and then diverge: generator loss climbs while discriminator loss keeps dropping, with its score on real images recovering to about 0.78 while its score on generated ones falls to about 0.21. The later samples are not a better face with more noise. They are more saturated and more textured while being *less* face-like than epoch 600 was.
+
+**DCGAN** replaced the fully connected layers with `ConvTranspose2d` and `BatchNorm2d` in the generator and strided convolutions in the discriminator, using the paper's `N(0, 0.02)` initialisation, batch size 2048, at 64×64.
+
+<Figure src="/projects/deepfake/dcgan.webp" alt="DCGAN samples at epoch 756 and epoch 1500" caption="DCGAN at epoch 756 and 1500. Twice the training produces no visible improvement, and close-ups show slightly more distortion at 1500." />
+
+The model plateaus early. Spatial coherence is clearly better than the MLP-GAN's, but epoch 1500 looks no better than epoch 756, the close-ups show slightly more distortion, and the generator loss had started rising again. The last 750 epochs added nothing at this resolution.
+
+**DDPM**, twice.
+
+- A custom 5-level U-Net (64 to 1024 channels, 32-dimensional sinusoidal time embeddings, T = 300, linear β schedule from 1e-4 to 0.02) trained 900 epochs at 64×64 with L1 loss. Diverse and recognisably face-shaped, but washed out and grey.
+- A `diffusers` `UNet2DModel` at 128×128, channels (128, 128, 256, 256, 512, 512) with attention blocks, `DDPMScheduler` over 1000 timesteps on a `squaredcos_cap_v2` schedule, AdamW at 1e-4 with 500 warmup steps, MSE loss.
+
+<Figure src="/projects/deepfake/diffusers.webp" alt="Grid of 128x128 samples from the diffusers DDPM after 30 epochs" caption="The diffusers DDPM after 30 epochs, roughly 10 GPU-hours. Colour and composition are far ahead of everything else here; the faces are still abstractions." />
+
+The second run is the best generator of the four after only 30 epochs, which is the argument for standard components over a hand-rolled U-Net. It is also the most expensive by a wide margin, at roughly 10 GPU-hours per 30 epochs, and that cost is what stopped the run at 30 rather than the 50 to 100 the results were still clearly improving towards.
+
