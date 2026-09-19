@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored project sources (READMEs, figures, notebook assets) are not ours to lint.
+    "content/**",
   ]),
 ]);
 

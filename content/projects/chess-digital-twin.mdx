@@ -1,0 +1,47 @@
+---
+slug: chess-digital-twin
+title: Chessboard photo to FEN
+tagline: A digital twin of a physical chess game, comparing a classical OpenCV pipeline against YOLOv8 and U-Net corner heatmaps.
+year: 2025
+kind: Course project · Computer vision
+tags: [Computer vision, Object detection, Segmentation]
+stack: [OpenCV, Ultralytics YOLO, PyTorch, Optuna]
+accent: "#E8B26B"
+order: 4
+grade: 20/20
+repo: https://github.com/Adriano-7/fcup-computer-vision
+credits: With Félix Martins, Francisco da Ana and João Torre Pereira · Computer Vision, FEUP
+---
+
+<Lead>
+Take a photo of a chessboard and output the full game state as a FEN string. Three tasks, from hand-built classical vision to a detection + geometry pipeline.
+</Lead>
+
+## Task 1: classical pipeline
+
+Board found by intersecting Canny edges with a white-colour threshold, contours merged by convex-hull proximity, perspective corrected, grid lines from a Hough transform with missing lines filled from the median spacing, pieces segmented with GrabCut and watershed, and orientation from template-matching the horse logo in the corners.
+
+<Figure src="/projects/chess-digital-twin/task1.webp" alt="Classical pipeline stages" caption="Board detection, warp, grid extraction and piece masks with OpenCV." />
+
+## Task 2: counting pieces with regression
+
+Started from ResNet50 + MSE and improved greedily: RandAugment beat manual augmentation, **EfficientNetV2-S** beat ResNeXt and Swin, a learnable-scale ReLU beat the sigmoid head, L1 loss beat MSE, and Optuna tuned the rest. Final rounded MAE: **0.0056 on the test set**.
+
+## Task 3: the digital twin
+
+Piece detection with YOLO (YOLOv8n, YOLOv8x, YOLO11s trained on ChessReD; **YOLOv8x: mAP50 0.995, mAP50-95 0.875**). Board geometry turned out to be the hard part. Five corner-finding strategies were tried:
+
+<Table
+  head={["Approach", "Idea", "Test MED"]}
+  rows={[
+    ["A", "Classical CV corners", "unreliable"],
+    ["B", "YOLO11-pose keypoints", "did not converge"],
+    ["C", "EfficientNetV2-S corner regression", "0.45%"],
+    ["D", "U-Net mask + ResNet orientation", "0.49%"],
+    ["E", "U-Net corner heatmaps (ResNet34 encoder)", "0.31%"],
+  ]}
+/>
+
+The final pipeline pairs YOLOv8x with the heatmap U-Net: warp the board, map the lower-centre of each piece box to its 8×8 square, emit FEN.
+
+<Figure src="/projects/chess-digital-twin/task3.webp" alt="Photo of a chessboard and the reconstructed digital board" caption="Input photo and the reconstructed digital twin." />

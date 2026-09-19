@@ -40,9 +40,6 @@ export function ListView({ projects }: { projects: ProjectMeta[] }) {
                 {String(i + 1).padStart(2, "0")}
               </span>
               {p.title}
-              <span className="mono ml-3 hidden align-middle text-muted-2 md:inline">
-                {p.featured ? "case study" : "github ↗"}
-              </span>
             </>
           );
           return (
@@ -52,15 +49,9 @@ export function ListView({ projects }: { projects: ProjectMeta[] }) {
               onPointerEnter={(e) => e.pointerType === "mouse" && setHovered(p.slug)}
               onFocus={() => canHover() && setHovered(p.slug)}
             >
-              {p.featured ? (
-                <Link href={`/work/${p.slug}`} className={cls}>
-                  {inner}
-                </Link>
-              ) : (
-                <a href={p.repo} target="_blank" rel="noreferrer" className={cls}>
-                  {inner}
-                </a>
-              )}
+              <Link href={`/work/${p.slug}`} className={cls}>
+                {inner}
+              </Link>
             </li>
           );
         })}

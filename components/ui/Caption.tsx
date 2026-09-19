@@ -40,8 +40,6 @@ export function Caption({ projects }: { projects: ProjectMeta[] }) {
             {project.tags[0]}
             <span className="mx-1.5 text-muted-2">·</span>
             {project.year}
-            <span className="mx-1.5 text-muted-2">·</span>
-            <span className="text-muted-2">{project.featured ? "case study →" : "github ↗"}</span>
           </span>
         </div>
       )}

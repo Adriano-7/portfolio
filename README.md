@@ -15,7 +15,7 @@ pnpm lint
 
 | Path | What |
 | --- | --- |
-| `content/projects/*.mdx` | One file per project. Frontmatter drives the card (title, year, tags, accent, `featured`, `repo`, `report`). The body is only rendered for `featured: true` projects at `/work/<slug>`. |
+| `content/projects/*.mdx` | One case study per file. Frontmatter drives the card (title, year, tags, accent, `repo`, `report`); the body is the page at `/work/<slug>`. |
 | `public/projects/<slug>/` | `cover.webp` (1280×800) and `cover-sm.webp` (640×400) for the card, plus any figures the case study uses. |
 | `scripts/covers.mjs`, `scripts/figures.mjs` | Sharp scripts that produced the WebP assets from the original repo figures. |
 | `scripts/avatar.mjs` | Builds `public/avatar.webp` and the favicons in `app/` from `content/profile.jpg`. |
@@ -30,11 +30,11 @@ pnpm lint
 
 1. Create `content/projects/<slug>.mdx` with frontmatter (copy an existing one). `order` controls the position in the helix.
 2. Add `public/projects/<slug>/cover.webp` and `cover-sm.webp` (16:10). `node scripts/covers.mjs <dir>` shows how they were made.
-3. If `featured: true`, write the body using `<Lead>`, `<Figure>` and `<Table>` (see `components/mdx`).
+3. Write the body using `<Lead>`, `<Figure>` and `<Table>` (see `components/mdx`).
 
 ## Behaviour notes
 
-- Home page: the helix drifts slowly while idle; wheel, drag, touch and arrow keys rotate it; the bottom-left caption names the front card (or the hovered one); click opens the case study (featured) or the GitHub repo.
+- Home page: the helix drifts slowly while idle; wheel, drag, touch and arrow keys rotate it; the bottom-left caption names the front card (or the hovered one); click opens the case study.
 - `?view=list` opens the list view directly. Reduced-motion users and browsers without WebGL get the list view.
 - The canvas lives in the root layout so textures survive navigation.
 

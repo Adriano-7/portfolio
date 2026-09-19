@@ -14,11 +14,6 @@ const covers = [
   { slug: "politeness-nlp",           file: "nlp-embeddings3d.png", fit: "cover" },
   { slug: "chess-digital-twin",       file: "cv-task3.png",         fit: "contain", bg: "#ffffff" },
   { slug: "deepfake",                 file: "df-epoch1500.png",     fit: "cover", trim: 40 },
-  { slug: "rl-maze",                  file: "rl-maze.png",          fit: "cover" },
-  { slug: "network-science",          file: "ns-gcn-emb.png",       fit: "cover" },
-  { slug: "mean-field-marl",          file: "mf-battle.png",        fit: "cover" },
-  { slug: "esn-forecasting",          file: "ts-forecast.png",      fit: "contain", bg: "#ffffff" },
-  { slug: "health-insurance",         file: "icd-corr.png",         fit: "contain", bg: "#ffffff" },
 ];
 
 for (const c of covers) {

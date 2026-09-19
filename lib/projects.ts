@@ -11,7 +11,6 @@ export type ProjectMeta = {
   tags: string[];
   stack: string[];
   accent: string;
-  featured: boolean;
   order: number;
   repo: string;
   report?: string;
@@ -39,7 +38,6 @@ function load(file: string): Project {
     tags: (data.tags ?? []) as string[],
     stack: (data.stack ?? []) as string[],
     accent: String(data.accent ?? "#f5a524"),
-    featured: Boolean(data.featured),
     order: Number(data.order ?? 999),
     repo: String(data.repo ?? ""),
     report: data.report ? String(data.report) : undefined,

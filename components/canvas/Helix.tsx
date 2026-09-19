@@ -154,25 +154,21 @@ export function Helix({
   const open = (index: number) => {
     const p = projects[index];
     const s = useStore.getState();
-    if (p.featured) {
-      s.setTransitioning(p.slug);
-      s.setHovered(null);
-      transition.current = {
-        index,
-        t: 0,
-        start: -1,
-        from: { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), scale: 1 },
-        target: new THREE.Vector3(0, mobile ? 0.5 : 0.3, FLIGHT_Z),
-        targetScale: 1.6,
-        radius: 0.045,
-        found: false,
-        navigated: false,
-        left: false,
-        landedAt: -1,
-      };
-    } else {
-      window.open(p.repo, "_blank", "noopener,noreferrer");
-    }
+    s.setTransitioning(p.slug);
+    s.setHovered(null);
+    transition.current = {
+      index,
+      t: 0,
+      start: -1,
+      from: { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), scale: 1 },
+      target: new THREE.Vector3(0, mobile ? 0.5 : 0.3, FLIGHT_Z),
+      targetScale: 1.6,
+      radius: 0.045,
+      found: false,
+      navigated: false,
+      left: false,
+      landedAt: -1,
+    };
   };
   const onClick = (index: number) => (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();

@@ -1,0 +1,75 @@
+---
+slug: llm-negotiation
+title: Open-weight LLMs as negotiators
+tagline: Benchmarking Gemma, Mistral and Qwen in negotiation games, then testing Self-Refine and team deliberation.
+year: 2026
+kind: MSc thesis
+tags: [LLMs, Multi-agent, Benchmarking]
+stack: [PyTorch, HF Transformers, SLURM, Streamlit]
+accent: "#F5A524"
+order: 1
+repo: https://github.com/Adriano-7/msc-thesis-llm-negotiation
+report: https://github.com/Adriano-7/msc-thesis-llm-negotiation/blob/main/context/MSc_Thesis/main.pdf
+reportLabel: Read the dissertation
+credits: MSc in Artificial Intelligence, FEUP/FCUP, University of Porto
+---
+
+<Lead>
+NegotiationArena (Bianchi et al., ICML 2024) showed how proprietary LLMs negotiate. Some of those models no longer exist. I replayed its three games with nine open-weight models and asked whether two inference-time techniques are worth their extra cost.
+</Lead>
+
+## Research questions
+
+- **RQ1.** How well do open-weight LLMs perform in two-party negotiation scenarios?
+- **RQ2.** To what extent do inference-time techniques change outcomes in multi-agent negotiation?
+  - Do the social-persona effects that raised GPT-4's win rate transfer to open-weight models?
+  - Does a draft → critique → rewrite loop (Self-Refine) improve outcomes enough to justify its cost?
+  - Does replacing one party with a deliberating team of models beat a single agent, and does team diversity matter?
+
+## The games
+
+<Table
+  head={["Game", "Setup", "What is at stake"]}
+  rows={[
+    ["BuySell", "Seller cost 40 ZUP, buyer value 60 ZUP", "Agree a price or walk away"],
+    ["Trading", "P1 {X:25, Y:5}, P2 {X:5, Y:25}", "Exchange resources to maximise final holdings"],
+    ["Multi-turn Ultimatum", "100 ZUP pot", "Proposer splits; responder accepts, counters or rejects"],
+  ]}
+/>
+
+Every game is an alternating conversation where moves are structured XML tags inside free-form messages. Metrics: **win rate**, **average payoff**, and **completion rate** (games reaching a valid terminal state).
+
+## Models
+
+Nine models from three families at three parameter tiers, all run locally through HF `transformers`, 8-bit quantised at the largest tier.
+
+<Table
+  head={["Tier", "Gemma", "Mistral", "Qwen"]}
+  rows={[
+    ["4–9B", "Gemma 3 4B IT", "Ministral 3 8B", "Qwen3.5 9B"],
+    ["12–14B", "Gemma 3 12B IT", "Ministral 3 14B", "Qwen3 14B"],
+    ["24–27B", "Gemma 3 27B IT", "Mistral Small 3.2 24B", "Qwen3.5 27B"],
+  ]}
+/>
+
+<Figure src="/projects/llm-negotiation/winrate.webp" alt="Cross-play win rate by game, family and parameter tier" caption="Cross-play win rate by family and tier. Qwen is the most consistent family, winning 63–67% of games overall." />
+
+## Two inference-time techniques
+
+### Self-Refine
+
+Before committing a move, the agent drafts it, critiques the draft along five negotiation-specific axes (format, payoff alignment, opponent plausibility, consistency, rule compliance), and rewrites it. The loop runs twice; only the final move enters the public game history.
+
+<Figure src="/projects/llm-negotiation/self-refine.webp" alt="The Self-Refine loop" caption="Initial draft, two critique/rewrite iterations, final commit." />
+
+### Team negotiation
+
+One negotiating party becomes a private team of three models. Members draft independently, revise over two discussion rounds while seeing each other's drafts, then rank the slate. A Borda count picks the committed move, and the rationale is rewritten in first person so the opponent never sees the team.
+
+<Figure src="/projects/llm-negotiation/team.webp" alt="Team deliberation protocol" caption="Independent drafts, discussion rounds, Borda consensus." />
+
+## Engineering
+
+- Forked NegotiationArena and added local open-weight inference, a **parse-error retry loop** that feeds parser errors back to the model (recovers most protocol failures of small models, ablated separately), Self-Refine and team agents with full trace logging.
+- A single `experiments.yaml` drives every run; launchers for two SLURM clusters (MIA, Deucalion) and for free Kaggle GPUs, with results pushed back to git branches.
+- A Streamlit explorer to read full game transcripts, including the private Self-Refine and deliberation traces.

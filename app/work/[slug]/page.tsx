@@ -10,9 +10,7 @@ import { HeroCover } from "@/components/ui/HeroCover";
 export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return getProjects()
-    .filter((p) => p.featured)
-    .map((p) => ({ slug: p.slug }));
+  return getProjects().map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({ params }: PageProps<"/work/[slug]">): Promise<Metadata> {
@@ -29,11 +27,11 @@ export async function generateMetadata({ params }: PageProps<"/work/[slug]">): P
 export default async function WorkPage({ params }: PageProps<"/work/[slug]">) {
   const { slug } = await params;
   const project = getProject(slug);
-  if (!project || !project.featured) notFound();
+  if (!project) notFound();
 
-  const featured = getProjects().filter((p) => p.featured);
-  const idx = featured.findIndex((p) => p.slug === slug);
-  const next = featured[(idx + 1) % featured.length];
+  const all = getProjects();
+  const idx = all.findIndex((p) => p.slug === slug);
+  const next = all[(idx + 1) % all.length];
 
   return (
     <Reveal>
