@@ -15,8 +15,8 @@ pnpm lint
 
 | Path | What |
 | --- | --- |
-| `content/projects/*.mdx` | One case study per file. Frontmatter drives the card (title, year, tags, accent, `repo`, `report`); the body is the page at `/work/<slug>`. |
-| `public/projects/<slug>/` | `cover.webp` (1280×800) and `cover-sm.webp` (640×400) for the card, plus any figures the case study uses. |
+| `content/projects/*.mdx` | One case study per file. Frontmatter drives the card (title, year, tags, accent, `repo`, `reports`); the body is the page at `/work/<slug>`. |
+| `public/projects/<slug>/` | `cover.webp` (1280×800) and `cover-sm.webp` (640×400) for the card, plus any figures the case study uses and the report PDFs listed under `reports` in the frontmatter. |
 | `scripts/covers.mjs`, `scripts/figures.mjs` | Sharp scripts that produced the WebP assets from the original repo figures. |
 | `scripts/avatar.mjs` | Builds `public/avatar.webp` and the favicons in `app/` from `content/profile.jpg`. |
 | `lib/helix.ts` | Pure layout math and the tunable helix parameters (`DESKTOP_HELIX`, `MOBILE_HELIX`). |

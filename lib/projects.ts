@@ -2,6 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 
+export type ProjectReport = {
+  label: string;
+  href: string;
+};
+
 export type ProjectMeta = {
   slug: string;
   title: string;
@@ -13,8 +18,7 @@ export type ProjectMeta = {
   accent: string;
   order: number;
   repo: string;
-  report?: string;
-  reportLabel?: string;
+  reports: ProjectReport[];
   grade?: string;
   credits?: string;
   cover: string;
@@ -24,6 +28,21 @@ export type ProjectMeta = {
 export type Project = ProjectMeta & { content: string };
 
 const DIR = path.join(process.cwd(), "content", "projects");
+
+// frontmatter lists a report as `{ file, label }`; `file` is a PDF served from
+// public/projects/<slug>/, or an absolute URL if it lives somewhere else.
+function reports(data: Record<string, unknown>, slug: string): ProjectReport[] {
+  const list = Array.isArray(data.reports) ? data.reports : [];
+  return list.map((r, i) => {
+    const { file, label } = (r ?? {}) as { file?: unknown; label?: unknown };
+    const src = String(file ?? "");
+    if (!src) throw new Error(`${slug}: reports[${i}] has no file`);
+    return {
+      label: String(label ?? "report"),
+      href: /^https?:\/\//.test(src) ? src : `/projects/${slug}/${src}`,
+    };
+  });
+}
 
 function load(file: string): Project {
   const raw = fs.readFileSync(path.join(DIR, file), "utf8");
@@ -40,8 +59,7 @@ function load(file: string): Project {
     accent: String(data.accent ?? "#f5a524"),
     order: Number(data.order ?? 999),
     repo: String(data.repo ?? ""),
-    report: data.report ? String(data.report) : undefined,
-    reportLabel: data.reportLabel ? String(data.reportLabel) : undefined,
+    reports: reports(data, slug),
     grade: data.grade ? String(data.grade) : undefined,
     credits: data.credits ? String(data.credits) : undefined,
     cover: `/projects/${slug}/cover.webp`,

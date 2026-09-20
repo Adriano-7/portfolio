@@ -13,7 +13,7 @@ const covers = [
   { slug: "imbalance-synthetic-data", file: "synth-methodology.jpg", fit: "contain", bg: "#ffffff" },
   { slug: "politeness-nlp",           file: "nlp-embeddings3d.png", fit: "cover" },
   { slug: "chess-digital-twin",       file: "cv-task3.png",         fit: "contain", bg: "#ffffff" },
-  { slug: "deepfake",                 file: "df-epoch1500.png",     fit: "cover", trim: 40 },
+  { slug: "deepfake",                 file: "df-dataset.png",       fit: "contain", bg: "#ffffff" },
 ];
 
 for (const c of covers) {

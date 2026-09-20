@@ -68,11 +68,11 @@ export default async function WorkPage({ params }: PageProps<"/work/[slug]">) {
           <a href={project.repo} target="_blank" rel="noreferrer" className="pill">
             github ↗
           </a>
-          {project.report && (
-            <a href={project.report} target="_blank" rel="noreferrer" className="pill !bg-transparent !text-fg ring-1 ring-white/15">
-              {project.reportLabel ?? "report"} ↗
+          {project.reports.map((r) => (
+            <a key={r.href} href={r.href} target="_blank" rel="noreferrer" className="pill !bg-transparent !text-fg ring-1 ring-white/15">
+              {r.label} ↗
             </a>
-          )}
+          ))}
         </div>
 
         <HeroCover slug={project.slug} src={project.cover} />

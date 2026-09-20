@@ -25,8 +25,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   const projects = getProjectMetas();
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full`} suppressHydrationWarning>
-      <body className="min-h-full">
+    // no height on <html>: pinning it to the viewport freezes the ResizeObserver
+    // Lenis uses to track the page height, which caps scrolling on long pages
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
+      <body className="min-h-dvh">
         <Suspense fallback={null}>
           <RouteSync />
         </Suspense>
