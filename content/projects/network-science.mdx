@@ -1,0 +1,209 @@
+---
+slug: network-science
+title: Graph algorithms against GNNs
+tagline: Community detection, link prediction and role discovery on eight graphs, comparing Louvain, Girvan-Newman and link heuristics against GCN, GraphSAGE, GAE and DGI.
+year: 2025
+kind: Course project · Network science
+tags: [Graphs, GNNs, Clustering]
+stack: [PyTorch Geometric, NetworkX, scikit-learn]
+accent: "#8FD96B"
+order: 6
+repo: https://github.com/Adriano-7/fcup-network-science
+reports:
+  - label: Read the report
+    file: report.pdf
+credits: With Francisco da Ana and João Lima · Network Science, FEUP/FCUP
+---
+
+<Lead>
+Community detection, link prediction and role discovery each have a standard algorithm and a graph neural network built for the same job. We ran both on eight graphs, and the answer came out different for every task: GNNs take community detection when the nodes carry features and fall apart when they don't, split link prediction with a random forest along the line between classifying and ranking, and lose role discovery outright to hand-counted graphlets.
+</Lead>
+
+## The graphs
+
+The eight networks span three orders of magnitude in size and two in density.
+
+<Table
+  head={["Dataset", "Nodes", "Edges", "Avg. degree", "Density"]}
+  rows={[
+    ["Karate Club", "34", "78", "4.59", "0.1390"],
+    ["Cora", "2,708", "5,278", "3.90", "0.0014"],
+    ["Citeseer", "3,327", "4,552", "2.74", "0.0008"],
+    ["PubMed", "19,717", "44,324", "4.50", "0.0002"],
+    ["Twitch-EN", "7,126", "77,774", "21.83", "0.002"],
+    ["Twitch-DE", "9,498", "315,774", "66.49", "0.003"],
+    ["Actor", "7,600", "26,659", "7.02", "0.0009"],
+    ["CLUSTER", "12,000", "36,000", "6.00", "0.0005"],
+  ]}
+/>
+
+Each task got the subset that suits it. Community detection used Karate Club, Cora and PubMed, the three graphs with published ground-truth partitions, plus a 150-node subgraph of Cora carved out so Girvan-Newman could finish. Link prediction used Cora, Citeseer and both Twitch graphs, pairing sparse citation networks against dense social ones. Role discovery used CLUSTER, Actor and Cora. Cora is in all three, which is what makes any cross-task comparison possible.
+
+The two Twitch graphs are the only dense networks in the set. Twitch-DE averages 66 neighbours per node against Cora's 3.9, and that one difference drives most of the link-prediction results.
+
+## Community detection
+
+The classical side is three algorithms from `networkx` and `community`. **Louvain** greedily maximises modularity in two alternating phases: move nodes between neighbouring communities while modularity improves, then collapse each community into a single node and repeat. **Girvan-Newman** works the other way, repeatedly deleting the edge with the highest betweenness centrality until the communities fall apart; at O(m²n) it only ran on Karate Club and the Cora subset. **Label propagation** has each node adopt whichever label most of its neighbours hold, iterated to a fixed point, and is near-linear.
+
+The learned side is GCN and GraphSAGE from PyTorch Geometric, differing in how they aggregate: GCN pulls in a node's entire neighbourhood, GraphSAGE samples a fixed number of neighbours per layer. Both were trained on the semi-supervised node-classification objective and their community assignments read off the predictions.
+
+That difference in supervision matters, because the report's headline comparison depends on it. The GNNs see ground-truth labels during training and end up with exactly as many communities as the dataset has classes: seven on Cora, three on PubMed, four on Karate Club. Louvain and label propagation see neither the labels nor the count and have to infer both. So the external metrics below are not measuring the same thing on both sides of the table.
+
+<Figure src="/projects/network-science/cd-karate.webp" alt="Three side-by-side drawings of the 34-node Karate Club graph, coloured by ground-truth communities, by Louvain's partition and by the GCN's" caption="Karate Club: ground truth, Louvain, GCN. Colours are assigned per panel and do not correspond across them. Louvain reproduces the ground truth except for node 9. The GCN pulls nodes 2, 7, 13, 19 and 9, all on the instructor's side of the split, into the officers' community, which is where its ARI of 0.47 against Louvain's 0.87 comes from." />
+
+<Table
+  head={["Karate Club", "# communities", "Modularity", "NMI", "ARI"]}
+  rows={[
+    ["Louvain", "4", "0.4188", "0.8932", "0.8653"],
+    ["Girvan-Newman", "5", "0.4013", "0.8301", "0.8077"],
+    ["Label Propagation", "3", "0.3251", "0.5510", "0.5115"],
+    ["GCN", "4", "0.3476", "0.6361", "0.4745"],
+    ["GraphSAGE", "4", "0.2772", "0.5058", "0.4474"],
+    ["GCN + graphlets", "4", "−0.0639", "0.2762", "0.1135"],
+    ["GraphSAGE + graphlets", "4", "−0.0865", "0.3879", "0.2050"],
+  ]}
+/>
+
+Karate Club has no node features, and without them the GNNs have nothing to convolve. Both land below every classical method on every metric, even with the labels and the community count handed to them. Replacing what features there are with graphlet counts makes it worse: modularity goes negative, meaning the partition has fewer internal edges than a random one of the same degree sequence would.
+
+On the feature-rich graphs the ordering inverts.
+
+<Figure src="/projects/network-science/cd-metrics.webp" alt="Two grouped bar charts of modularity, NMI, ARI and Fowlkes-Mallows for every algorithm, on Karate Club and on Cora" caption="The same seven algorithms on Karate Club (left) and Cora (right). On Karate Club every bar drops when you move from the classical methods to the GNNs; on Cora the GNN bars for NMI, ARI and Fowlkes-Mallows are roughly double Louvain's while modularity stays flat." />
+
+Louvain wins modularity everywhere, and modularity turns out to say very little about the ground truth. On Cora it reaches 0.8137, the highest score in the whole table, by splitting 2,708 nodes into 101 communities, and scores 0.2260 ARI against the true subjects. Label propagation is worse on both counts, cutting Cora into 454 communities and PubMed into 1,740. The GNNs, holding to seven and three communities respectively, sit at 0.6120 and 0.4301 ARI.
+
+On the 150-node Cora subset the divergence is total:
+
+<Table
+  head={["Cora Subset", "# communities", "Modularity", "ARI"]}
+  rows={[
+    ["Louvain", "9", "0.6566", "0.0064"],
+    ["Girvan-Newman", "11", "0.6391", "0.0038"],
+    ["Label Propagation", "17", "0.5821", "−0.0039"],
+    ["GCN", "6", "0.0285", "0.6728"],
+    ["GraphSAGE", "6", "0.0052", "0.6606"],
+  ]}
+/>
+
+Three algorithms find textbook community structure (modularity above 0.58, meaning dense blocks with sparse links between them) and agree with the true paper subjects at exactly the rate of chance. The GNNs produce a partition that is structurally almost meaningless, near-zero modularity, and recover two thirds of the labelled structure. At this size the citation topology and the subject labels are close to independent, so each family recovers the structure it can see.
+
+Graphlet features were tried here too and mostly did nothing. Augmenting node features with triangle counts shifted Cora's GCN from 0.6036 to 0.6052 NMI and from 0.6120 to 0.6044 ARI, which is noise in both directions. The abstract word vectors already carry more signal than local clustering does, so the structural feature is redundant where it isn't harmful.
+
+<Figure src="/projects/network-science/cd-cora-tsne.webp" alt="Two t-SNE projections of the same GCN node embeddings for Cora, one coloured by ground-truth paper subject and one by the GCN's predicted community" caption="t-SNE of the GCN's Cora embeddings, coloured by true subject (left) and by predicted community (right). The two agree almost everywhere; the disagreement is concentrated in the mixed region around the origin, where the dark purple and yellow clusters overlap. The embedding is what the classifier is trained to produce, so the clean separation is partly the objective showing through." />
+
+## Link prediction
+
+Every model is scored on the same four graphs under one fixed, seeded train/validation/test edge split. Three families compete.
+
+**Heuristics** are parameter-free scores over a candidate pair. Common Neighbors counts shared neighbours; Jaccard normalises that count by the union of the two neighbourhoods; Adamic-Adar weights each shared neighbour by the inverse log of its degree, so a rare common neighbour counts more than a hub; Preferential Attachment ignores overlap entirely and multiplies the two degrees.
+
+<Table
+  head={["Heuristic", "AUC", "MRR", "Hits@100"]}
+  rows={[
+    ["Adamic-Adar", "0.7446", "0.1726", "0.3764"],
+    ["Common Neighbors", "0.7413", "0.1144", "0.3234"],
+    ["Jaccard Index", "0.7196", "0.1404", "0.2471"],
+    ["Preferential Attachment", "0.7134", "0.0543", "0.3105"],
+  ]}
+/>
+
+All four classify about equally well and rank very differently. Adamic-Adar's down-weighting of hubs is worth 50% more MRR than plain Common Neighbors, and three times what Preferential Attachment manages. Being connected to popular nodes says something about whether an edge exists and almost nothing about which edge is likeliest.
+
+**Traditional ML** turns the problem into binary classification on a feature vector built from those same heuristics plus Resource Allocation and a community-sharing indicator. Each model was tuned with MRR as the objective.
+
+<Table
+  head={["Model", "AUC", "MRR", "Hits@100"]}
+  rows={[
+    ["Decision Tree", "0.8359", "0.1026", "0.5159"],
+    ["Random Forest", "0.8111", "0.1972", "0.5469"],
+    ["K-Nearest Neighbors", "0.8055", "0.0275", "0.2888"],
+    ["Logistic Regression", "0.7912", "0.2064", "0.4918"],
+  ]}
+/>
+
+Learning a combination of the heuristics is worth about nine AUC points over the best heuristic on its own. But the spread inside this family is wider than the gap to the family below it: KNN and the decision tree reach respectable AUC and then rank badly, KNN at 0.0275 MRR. Logistic regression posts the highest MRR of any model in the study, 0.2064, and is the only one of the four that does not lead on any other metric.
+
+**GNNs** encode nodes with GCN or GraphSAGE and score a candidate edge from the two embeddings, either by dot product or by concatenating them into an MLP. Training minimised binary cross-entropy over edges, capped at 500 epochs with early stopping on validation at patience 50.
+
+<Table
+  head={["Encoder", "Decoder", "AUC", "MRR", "Hits@100"]}
+  rows={[
+    ["GCN", "Dot product", "0.9003", "0.1779", "0.5619"],
+    ["GCN", "MLP", "0.8514", "0.0668", "0.4900"],
+    ["GraphSAGE", "Dot product", "0.7936", "0.1264", "0.4107"],
+    ["GraphSAGE", "MLP", "0.7908", "0.0588", "0.3941"],
+  ]}
+/>
+
+The simpler decoder wins on both encoders and on every metric. The effect is small on AUC and large on ranking: GCN's MRR more than doubles, from 0.0668 to 0.1779, when the MLP is dropped for a dot product. An MLP can score individual pairs correctly without the embedding space being globally consistent, which is enough to decide whether one edge is real and not enough to rank thousands of candidates against each other. Constraining the score to a dot product forces the encoder to do that work instead.
+
+<Figure src="/projects/network-science/lp-best.webp" alt="Grouped bar chart of AUC, MRR, Hits@10, Hits@50 and Hits@100 for the GCN with dot-product decoder, the random forest and Adamic-Adar" caption="Best model from each family, averaged over the four datasets. The GCN takes AUC by nine points and Hits@100 by 1.5. The random forest takes MRR, Hits@10 and Hits@50. Adamic-Adar, which has no parameters and no training, is within half a point of the GCN's MRR." />
+
+The GCN is the best classifier by a clear margin, 0.900 AUC against 0.811, and it is not the best ranker: the random forest beats it on Hits@10 by seven points and on Hits@50 by two, losing only at Hits@100. The forest also trains in a fraction of the time and needs no GPU, which makes it the better default for anything recommendation-shaped. Adamic-Adar sits at 0.173 MRR against the GCN's 0.178, so on that metric the GNN bought nothing.
+
+The report names the random forest the best-ranking model, though logistic regression's MRR is higher; the forest wins the head-to-head because Hits@K is where the two diverge.
+
+Those averages also hide how much the dataset decides.
+
+<Figure src="/projects/network-science/lp-datasets.webp" alt="Grouped bar chart of AUC, MRR and Hits@10/50/100 averaged across all models, for Twitch-DE, Twitch-EN, Cora and Citeseer" caption="Every model averaged per dataset. The two dense Twitch graphs sit at 0.85–0.87 AUC with Hits@100 near 0.24–0.40; the two sparse citation graphs invert it, dropping to 0.70–0.75 AUC while Hits@100 climbs to 0.47–0.54." />
+
+Telling a real edge from a random non-edge is easy in a dense graph and picking the right one out of the candidate pool is hard, because the pool is enormous. In a sparse citation graph the reverse holds. The swing between the two regimes is larger than the swing between any two models, so averaging over the four hides the largest effect in the study.
+
+<Figure src="/projects/network-science/lp-all-models.webp" alt="All twelve link prediction models with mean and standard deviation bars for every metric, sorted by AUC" caption="All twelve models with standard deviations across the four datasets. The GCN's Hits@100 spans roughly 0.28 to 0.84 depending on the graph, which is wider than the distance between first and last place on that metric." />
+
+The report flags one tension it does not resolve. Training minimises binary cross-entropy, early stopping watches validation, and neither of those is MRR. A run that keeps improving its AUC can be degrading its ranking at the same time, so a single stopping point has to be a compromise between objectives that are not aligned. Multi-objective tuning is left as future work.
+
+## Role discovery
+
+Role discovery asks a different question from community detection. A community is a set of nodes densely connected *to each other*; a role is a set of nodes that occupy the same *kind* of position, whether or not they are anywhere near one another. Two moderators of unrelated forums have the same role and belong to different communities.
+
+There is no ground truth, so both pipelines end in K-Means and are scored by internal cluster-quality metrics, with k swept over 3 to 7 and chosen by silhouette.
+
+<Figure src="/projects/network-science/role-pipelines.webp" alt="Diagram of two parallel pipelines, one engineering structural features then clustering them, the other learning GNN embeddings then clustering those, both converging on discovered roles" caption="The two routes differ only in how a node becomes a vector. From there both are K-Means." />
+
+The engineered route builds that vector in one of two ways. **FeatureBasedRoles** uses five centrality measures (degree, betweenness, closeness, eigenvector, PageRank) plus the clustering coefficient. **FeatureBasedRolesGraphlets** replaces them with graphlet degree vectors, which count how many times a node appears in each orbit of every induced subgraph on two to four nodes. Centrality measures how important a node is. A graphlet vector describes the shape of its neighbourhood, which is closer to what a role means.
+
+The learned route is two unsupervised architectures. **GAE** encodes nodes with a GCN, decodes the adjacency matrix back out and minimises reconstruction cross-entropy. **DGI** is contrastive: a discriminator learns to separate a real node embedding paired with a graph summary vector from a corrupted-graph embedding paired with the same summary, which pushes the encoder toward representations that are locally specific and globally consistent. Both were tested twice, once with centrality features as input and once with graphlet vectors, over a grid of learning rate, hidden channels and embedding dimension.
+
+<Figure src="/projects/network-science/role-silhouette.webp" alt="Bar charts of silhouette score, Davies-Bouldin index and Calinski-Harabasz index for six role-discovery models across Actor, CLUSTER and Cora" caption="Six models scored on three datasets by three internal metrics. On Actor and Cora the graphlet variants separate from the rest by a wide margin; on CLUSTER all six land between roughly 0.37 and 0.58 and the ordering scrambles." />
+
+Graphlet features carry the result, though not quite in the way the report summarises it. On all three datasets the best-scoring model is one that was given graphlet vectors. Which model that is changes: DGI with graphlets edges out the engineered features on Actor, the engineered features win Cora outright, and on CLUSTER the engineered graphlet model is the *weakest* of the four graphlet-bearing configurations. So the input representation matters more than the architecture consuming it, which is not the same claim as the traditional pipeline beating the GNNs.
+
+CLUSTER is also where every model does worst, despite being the dataset chosen as purpose-built for role discovery. It is a synthetic graph built from planted blocks, so its nodes are defined by which block they belong to rather than by what structural position they occupy, which makes it closer to a community-detection benchmark.
+
+### The three roles on Cora
+
+The best configuration, engineered graphlets at k = 3, reaches a silhouette of 0.9372 on Cora.
+
+<Figure src="/projects/network-science/role-cora.webp" alt="Left, a t-SNE of Cora coloured by discovered role, showing a large navy starburst, a tiny tight yellow cluster and a single pink point. Right, a 3x3 heatmap of normalised connectivity between the three roles" caption="The three roles and how they connect. Role 0 holds 2,694 of Cora's 2,708 nodes, Role 2 holds 13, Role 1 holds one. Every role sends the overwhelming majority of its edges to Role 0 (93%, 98% and 96%), so the two small roles are satellites of the periphery and have essentially nothing to do with each other." />
+
+<Figure src="/projects/network-science/role-fingerprints.webp" alt="Radar plot of five normalised centrality measures for the three roles, and violin plots of each measure's distribution within each role" caption="Structural fingerprints. Role 1 (pink) maxes out degree, betweenness, closeness and eigenvector centrality while sitting at zero clustering, the signature of a bridge between regions rather than a member of any one of them. Role 0 (navy) is the mirror image: no centrality, high clustering. Role 2 (yellow) is intermediate on every axis. Role 1's violins are flat because it contains one node." />
+
+Mapping the roles back onto paper subjects, which the clustering never saw, gives the interpretation. Role 1, the single global hub, is a paper on genetic algorithms. Role 2, the thirteen secondary hubs, is mostly neural networks and reinforcement learning, two adjacent fields whose papers apparently share a bridging signature. Role 0, the bulk, is a mix of every subject.
+
+That silhouette needs reading carefully. A partition of 2,694 / 13 / 1 scores well on internal metrics almost by construction, because fourteen outliers sitting far from one dense blob is the geometry silhouette rewards most. Silhouette is also both the criterion that selected k and the number being reported, so the search was free to pick the most degenerate split in the range. The structure it found is real and the fingerprints are clean, but "three roles" is a generous description of one hub, a dozen near-hubs and everything else.
+
+## What held up
+
+<Table
+  head={["Task", "Winner", "Margin"]}
+  rows={[
+    ["Community detection, with node features", "GCN", "0.612 vs 0.226 ARI on Cora"],
+    ["Community detection, without them", "Louvain", "0.865 vs 0.475 ARI on Karate Club"],
+    ["Link prediction, classification", "GCN + dot product", "0.900 vs 0.811 AUC"],
+    ["Link prediction, ranking", "Random Forest", "0.347 vs 0.280 Hits@10"],
+    ["Role discovery", "Graphlet features, either pipeline", "0.937 silhouette on Cora"],
+  ]}
+/>
+
+The GNNs won wherever there was a signal the classical algorithms had no way to reach, which on Cora and PubMed means the abstract word vectors, and lost everywhere that signal was missing. In role discovery the useful representation turned out to be a hand-computed graphlet vector, and it helped the GNNs about as much as it helped K-Means, which suggests the feature was doing the work in both pipelines.
+
+## Caveats
+
+The community-detection comparison is not like-for-like. The GNNs are semi-supervised, trained against the same labels the external metrics score them on, and are handed the number of communities; Louvain and label propagation infer both from topology alone. Their ARI gap on Cora would need an unsupervised GNN baseline before it could be read as the report reads it.
+
+Every qualitative analysis in the project runs on Cora. The community interpretation, the role fingerprints and the role-to-subject mapping all come from one 2,708-node citation graph, and citation networks are unusually well-behaved: homophilous, sparse, with features that were engineered to be predictive of the labels. How much of "purely structural methods discover semantically meaningful roles" survives on a graph that was not built that way is untested here.
+
+Role discovery has no ground truth, and internal metrics are not a substitute for one. Silhouette selects k and then scores the result, which rewards degenerate partitions; the Davies-Bouldin and Calinski-Harabasz columns agree with it, but they share the same bias toward well-separated outlier clusters.
+
+Link-prediction results are four-dataset means over graphs whose behaviour diverges strongly, and the standard deviations in the per-model figure are wider than most of the gaps those means are used to argue about. The report's own limitation stands too: single-objective training against a loss that correlates with AUC and not with MRR means the ranking numbers are partly an artefact of where early stopping happened to land.
