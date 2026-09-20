@@ -70,7 +70,7 @@ export function Helix({
   params: HelixParams;
   mobile: boolean;
 }) {
-  const textures = useTexture(projects.map((p) => (mobile ? p.coverSm : p.cover)));
+  const textures = useTexture(projects.map((p) => (mobile ? p.coverSm : (p.cardCover ?? p.cover))));
   const group = useRef<THREE.Group>(null);
   const runtime = useRef<Runtime[]>([]);
   const camera = useThree((s) => s.camera);

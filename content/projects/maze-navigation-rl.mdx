@@ -1,0 +1,216 @@
+---
+slug: maze-navigation-rl
+title: Maze navigation on a ball-balancing platform
+tagline: Guiding a ball through procedurally generated mazes in Unity ML-Agents, contrasting hierarchical A* with PPO against end-to-end CNN-LSTM policies.
+year: 2025
+kind: Course project · Intelligent robotics
+tags: [Robotics, Reinforcement Learning, Unity ML-Agents, PPO]
+stack: [Unity, C#, Python, ML-Agents, PPO, PyTorch]
+accent: "#38BDF8"
+order: 9
+repo: https://github.com/Adriano-7/fcup-robotics
+reports:
+  - label: Read the report
+    file: report.pdf
+credits: With Félix Martins, Francisco da Ana and Martim Iglesias · Topics in Intelligent Robotics, FEUP
+---
+
+<Lead>
+Tilt a plate in two axes, guide a rolling ball through a procedurally generated maze to the exit. We framed this as a continuous control problem in Unity ML-Agents and compared two setups under PPO: a hierarchical split pairing A* graph search with a low-level tilt controller, and an end-to-end model that learns planning and control together through a CNN and an LSTM. The hierarchical pipeline cleared 85.8% of mazes after 6 million steps. The end-to-end model reached 80.4%, but needed 50 million steps and repeatedly wedged itself in long dead ends where its 20×20 local grid could not see the exit.
+</Lead>
+
+## The platform & control setup
+
+The ball-and-plate system is unstable by default. The sphere rolls freely under gravity and contact friction, and the controller has no way to apply direct horizontal forces to it. Everything has to happen through the plate's two rotational axes, roll (`σ_roll`) and pitch (`σ_pitch`):
+
+`ẍ = (m · g · sin(σ_roll)) / (m + I / r²)`
+
+`z̈ = (m · g · sin(σ_pitch)) / (m + I / r²)`
+
+Adding walls turns a smooth continuous balancing problem into a series of collisions. Misjudging a brake angle bounces the ball off a wall or flips it off the board entirely.
+
+<Figure 
+  src="/projects/maze-navigation-rl/maze-platform.webp" 
+  alt="Virtual ball-balancing maze platform in Unity showing procedural labyrinth corridors and a rolling sphere" 
+  caption="The simulation environment in Unity: a dual-axis actuated platform running PhysX contact dynamics, loaded with procedurally generated maze layouts." 
+/>
+
+The control task is framed as an MDP with a continuous 2D action space:
+
+`a = (σ_roll, σ_pitch) ∈ [-1, 1]²`
+
+Physics runs in PhysX at `Δt = 0.02 s` (50 Hz), and the policy acts every 5 physics steps, giving an effective 10 Hz control loop. Episodes cut off at 1,000 decisions.
+
+## Architecture: decoupling with the Strategy pattern
+
+We wanted to test very different controllers on the exact same physics and mazes without rewriting the Unity scene or duplicating agent code. The project wraps the policy in a C# Strategy pattern.
+
+<Figure 
+  src="/projects/maze-navigation-rl/strategy-pattern.webp" 
+  alt="UML class diagram illustrating the Strategy design pattern in Unity ML-Agents" 
+  caption="Architectural decoupling via the Strategy pattern: StrategicPlatformAgent delegates sensor collection, action execution, and reward scoring to interchangeable IStrategy implementations." 
+/>
+
+The central `StrategicPlatformAgent` handles the Unity ML-Agents lifecycle (step callbacks, resets, physics queries) and passes them to an `IStrategy` implementation:
+
+```csharp
+public interface IStrategy
+{
+    void Initialize(StrategicPlatformAgent agent);
+    void OnEpisodeBegin();
+    void CollectObservations(VectorSensor sensor);
+    void ProcessActions();
+}
+```
+
+For the hybrid model, `HierarchicalStrategy` splits into `IPlanner` (which runs A* or BFS on the grid to build a waypoint queue) and `IController` (the low-level PPO policy tracking those points). Swapping between hierarchical control, end-to-end learning, or a hand-tuned test controller comes down to choosing a dropdown option in the Unity Inspector.
+
+## Baselines: balancing and targeting
+
+Before touching mazes, we trained two baseline tasks to confirm that PPO could handle the continuous physics.
+
+### Level 1: plate balancing
+
+Keep the ball on an unbordered 10×10 plane. The ball spawns at a random location with zero velocity. Observations are 7 continuous floats: platform tilt `(σ_roll, σ_pitch)`, local ball coordinates `(x, y, z)`, and linear velocity `v_ball`. The agent gets `+0.1` per survival step and `-1.0` if the ball drops off the edge.
+
+<Figure 
+  src="/projects/maze-navigation-rl/baseline-curves.webp" 
+  alt="Reward evolution and success rate curves for the plate balancing task" 
+  caption="Level 1 training curves: cumulative reward (left) and survival success rate (right) plateauing near 100% within 100k timesteps." 
+/>
+
+The agent learned to keep the ball centered within 100k steps, discovering small counter-tilts that brake the ball before it picks up speed.
+
+### Level 2: target navigation
+
+A target coordinate `(x*, z*)` is placed randomly on the board. The policy has to roll the ball to that spot and hold it still. The observation expands to 9 values, adding the horizontal target offset `(x* - x, z* - z)`. The step reward scales inversely with distance to the target:
+
+`R(s, a, s') = -1000  (if the ball falls off)`
+
+`R(s, a, s') = 1 - (|x* - x| + |z* - z|) / MaxDistance  (otherwise)`
+
+<Figure 
+  src="/projects/maze-navigation-rl/target-navigation-curve.webp" 
+  alt="Cumulative reward curve for the target navigation task converging to 985 points" 
+  caption="Level 2 training curve: smoothed cumulative reward climbing to ~985 out of a theoretical 1000, indicating an average residual offset of 0.15 units from the target." 
+/>
+
+With a 10×10 plate (`MaxDistance = 20`) and ball radius 0.5, the policy converged to an average cumulative reward of 985 out of 1000. That works out to an average error of roughly 0.15 units on each axis: the ball rolls to the marker, cancels its own momentum with an opposing tilt, and hovers on the spot.
+
+## The hierarchical strategy: A* + PPO
+
+A full maze combines two different problems: finding the path through a discrete lattice, and generating the continuous forces to roll the ball along it. Trying to learn both at once from scratch is where sample efficiency collapses. The hierarchical pipeline keeps them separate.
+
+<Figure 
+  src="/projects/maze-navigation-rl/hierarchical-flow.webp" 
+  alt="Flowchart of the hierarchical reward function and decision loop" 
+  caption="Per-step decision cycle in the hierarchical pipeline: A* emits waypoints across the discrete maze grid, while the continuous PPO controller optimizes directional velocity toward the active waypoint." 
+/>
+
+A* runs once at episode start, reading the maze walls and returning the optimal list of waypoints from entrance to exit. When the ball enters within a set radius of the active waypoint, the planner pops the next one.
+
+The low-level controller only needs local geometry. It never sees walls or distant dead ends. Its observation has only 7 values:
+- Normalized vector to the next waypoint: `d_w`
+- Ball linear velocity: `v_ball`
+- Platform tilt angles: `(σ_roll, σ_pitch)`
+
+The reward function balances progress, speed, and milestones:
+
+`R_total = R_dir + R_time + R_waypoint`
+
+- `R_dir = 0.01 · (v_ball · d_w)`: velocity projection along the direction to the waypoint, pushing the ball to move towards the goal rather than coasting sideways.
+- `R_time = -B / (L · S_max)`: an adaptive step penalty that keeps the agent moving. Setting `B = 1.0`, `L` to the path length, and `S_max` to the maximum allowed steps per waypoint prevents longer mazes from racking up unfair penalties.
+- `R_waypoint = +1.0`: a milestone reward whenever a waypoint is reached.
+
+<Figure 
+  src="/projects/maze-navigation-rl/hierarchical-training.webp" 
+  alt="Training metrics for the hierarchical agent showing cumulative reward and episode length" 
+  caption="Hierarchical agent training over 6 million steps: cumulative reward rises steadily (left) while average episode duration drops to 992 physics steps (right)." 
+/>
+
+The hierarchical model reached an **85.8% success rate** in **6 million training steps**, clearing successful runs in an average of **992 steps**.
+
+## The end-to-end strategy: CNN + LSTM
+
+The end-to-end approach gives up the planner and asks a single policy to solve the whole problem directly.
+
+Because the agent has to navigate without an explicit route, its observation space is much larger:
+- A 20×20 binary grid centered on the ball, marking where walls are.
+- Discrete row and column distance to the exit: `(r_goal - r_ball, c_goal - c_ball)`.
+- Sub-cell offset: difference between the ball's actual position and the center of its current tile, so it can align itself within corridors.
+- Pre-computed BFS distance from the current cell to the exit: `d[r][c]`.
+- Current tilt angles `(σ_roll, σ_pitch)` and 3D velocity `v_ball`.
+
+A CNN extracts spatial features from the 20×20 occupancy grid. Those features concatenate with the kinematics and pass through an LSTM with a 3-frame observation stack, giving the network memory across consecutive states.
+
+```
+R(s, a, s') = +10.0                 (if s' reaches the goal cell)
+R(s, a, s') = -1.0                  (if s' is a terminal failure)
+R(s, a, s') = -d_[0,1] · 0.001       (otherwise)
+```
+
+Here, `d_[0,1]` is the normalized distance to the exit. The `-1.0` terminal failure also penalizes bouncing on top of maze walls. That check was added after early runs found an exploit: the policy would angle the plate violently, pop the ball onto the top of the maze walls, and roll across the ceiling straight to the exit.
+
+<Figure 
+  src="/projects/maze-navigation-rl/endtoend-training.webp" 
+  alt="Training curve showing cumulative reward for end-to-end maze navigation reaching 7.51" 
+  caption="End-to-end training curve across 50 million steps: cumulative reward converges to ~7.51 out of a theoretical 10.0, yielding an 80.4% success rate." 
+/>
+
+Training took **50 million steps**. Cumulative reward leveled off at **7.51**, reaching an **80.4% success rate** with an average completion time of **1,040 steps**.
+
+## Where each method fails
+
+The two architectures fail for completely different reasons.
+
+<Figure 
+  src="/projects/maze-navigation-rl/failure-modes.webp" 
+  alt="Failure mode diagnostic: repetitive oscillation trajectory on the left and the 20x20 local grid field of view on the right" 
+  caption="The end-to-end failure mode: repetitive back-and-forth oscillation (left, white arrows) caused by spatial myopia in the agent's 20×20 local grid (right, blue overlay)." 
+/>
+
+### Corner stalls in the hierarchical controller
+
+The hierarchical model almost never falls off the plate. Its main failure mode is running out the 1,000-step clock. That happens when the ball rolls into a tight 90° corner.
+
+To make the turn, the agent has to kill its forward velocity. But once velocity drops close to zero, the directional reward `0.01 · (v_ball · d_w)` drops to zero as well. The agent gets stuck in a conservative local minimum: tipping the board enough to overcome static friction risks overshooting into the opposite wall, while keeping the plate nearly flat guarantees survival. Adding a stagnation penalty for low velocities when far from the target fixes most of these stalls.
+
+### Spatial myopia in the end-to-end network
+
+The end-to-end agent fails by getting trapped in loops. In long dead ends or S-bends, the exit is farther than the 20×20 grid can see.
+
+The local visual field shows an open corridor in front and an open corridor behind. The LSTM memory is short, so once the ball hits the dead-end wall and rolls back, the BFS distance gradient pulls it forward again. The ball bounces back and forth across the same few tiles until time expires.
+
+Feeding the entire maze grid into the CNN would fix the blind spot, but the input size would grow quadratically with the maze dimensions, making an already sample-heavy model even slower to train.
+
+## Quantitative comparison
+
+<Table
+  head={["Metric", "Hierarchical (A* + PPO)", "End-to-End (CNN + LSTM + PPO)", "Δ Advantage"]}
+  rows={[
+    ["Average success rate", "85.8%", "80.4%", "+5.4% (Hierarchical)"],
+    ["Average completion steps", "992 steps", "1,040 steps", "4.6% faster (Hierarchical)"],
+    ["Training steps to converge", "6,000,000", "50,000,000", "8.3× sample efficiency"],
+    ["Observation dimensionality", "7 continuous floats", "400 grid cells + 9 kinematic floats", "58× smaller state space"],
+    ["Recurrence required?", "No (feedforward MLP)", "Yes (LSTM + 3 frame stack)", "Simpler deployment"],
+    ["Primary failure mode", "Corner deceleration stall", "Corridor cyclic oscillation", "Easier to rectify"],
+  ]}
+/>
+
+The main takeaway is the difference in training budget. Combining A* with a low-level PPO controller reached a higher success rate (85.8% vs 80.4%) in 6 million steps, compared to 50 million for the monolithic network.
+
+Pathfinding on a discrete graph is an already solved problem. Asking reinforcement learning to rediscover graph traversal from reward signals alone, while simultaneously learning non-linear contact mechanics, burns tens of millions of frames for worse reliability. Letting A* handle the route lets PPO focus entirely on tilt dynamics and momentum control.
+
+## Sim-to-real gap
+
+Unity PhysX runs fast enough for ML-Agents, but transferring these policies to a real table brings up three practical bottlenecks:
+
+1. **Direct tilt angles vs kinematics.** The virtual agent commands plate angles directly. A real rig uses servos, pushrods, or a Stewart platform, which requires an inverse kinematics solver or a secondary PID layer to convert target roll/pitch into motor angles.
+2. **Sensor latency.** In simulation, the agent reads perfect coordinates every frame with zero noise. A physical table needs an overhead camera or a resistive touch surface. Both introduce 15 to 30 ms of latency and tracking jitter, which can cause high-gain tilt policies to oscillate wildly.
+3. **Contact mechanics.** PhysX simplifies sphere-plane contact. Real balls slip, bounce on uneven 3D-printed plastic, and lose velocity inconsistently at corners. Closing that gap requires domain randomization during training, varying ball mass by ±20%, sweeping surface friction across `[0.1, 0.4]`, and adding artificial latency to action delivery.
+
+<Video 
+  src="/projects/maze-navigation-rl/maze-run.mp4" 
+  poster="/projects/maze-navigation-rl/video-poster.webp" 
+  caption="Full maze navigation episode: the agent applies real-time corrective pitch and roll adjustments, negotiating tight corridors and 90° corners to deliver the ball to the exit." 
+/>

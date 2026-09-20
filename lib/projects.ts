@@ -23,6 +23,7 @@ export type ProjectMeta = {
   credits?: string;
   cover: string;
   coverSm: string;
+  cardCover?: string;
 };
 
 export type Project = ProjectMeta & { content: string };
@@ -64,6 +65,9 @@ function load(file: string): Project {
     credits: data.credits ? String(data.credits) : undefined,
     cover: `/projects/${slug}/cover.webp`,
     coverSm: `/projects/${slug}/cover-sm.webp`,
+    cardCover: fs.existsSync(path.join(process.cwd(), "public", "projects", slug, "cover-static.webp"))
+      ? `/projects/${slug}/cover-static.webp`
+      : `/projects/${slug}/cover.webp`,
     content: content.trim(),
   };
 }

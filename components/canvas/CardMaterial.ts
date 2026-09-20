@@ -96,11 +96,13 @@ export class CardMaterial extends THREE.ShaderMaterial {
     planeH: number;
     bend: number;
   }) {
-    const img = opts.map.image as { width?: number; height?: number } | undefined;
+    const img = opts.map.image as { width?: number; height?: number; videoWidth?: number; videoHeight?: number } | undefined;
+    const imgW = img?.width || img?.videoWidth || 1280;
+    const imgH = img?.height || img?.videoHeight || 800;
     super({
       uniforms: {
         uMap: { value: opts.map },
-        uImageSizes: { value: new THREE.Vector2(img?.width ?? 1280, img?.height ?? 800) },
+        uImageSizes: { value: new THREE.Vector2(imgW, imgH) },
         uPlaneSizes: { value: new THREE.Vector2(opts.planeW, opts.planeH) },
         uReveal: { value: 0 },
         uZoom: { value: 0 },
