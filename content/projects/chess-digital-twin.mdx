@@ -24,23 +24,29 @@ Photograph a chessboard, return the position as a FEN string. The work splits in
 
 ## Task 1: no learned models
 
-Everything downstream depends on a clean perspective warp, so the pipeline spends most of its effort on the board rather than on the pieces.
+Everything downstream depends on a clean perspective warp, so the pipeline spends most of its effort on the board rather than on the pieces. Every figure below follows one photo, `G006_IMG048`, from the raw frame through to the boxes.
 
 **Finding the board.** Two detectors run independently on the grayscale image. One blurs and thresholds for white; the other runs Canny edge detection directly. Each keeps the contour whose convex hull has the largest area, then absorbs its neighbours: any contour lying within a distance threshold of that hull is merged in, the hull is recomputed, and the sweep repeats until nothing else merges.
 
 The two results are then intersected, and `cv2.approxPolyDP` simplifies the intersection to a four-vertex polygon, whose corners sort into board order by coordinate. That intersection is what buys the robustness. White thresholding breaks under strong lighting, Canny latches onto nearby pieces or the floor, and the two rarely fail on the same image, so their overlap is far steadier than either alone.
 
+<Figure src="/projects/chess-digital-twin/t1-board.webp" alt="Five panels: the input photo, Canny edges with the largest convex hull in teal, the white threshold mask with its own hull in rose, the two hulls intersected to give four corners, and the resulting perspective warp" caption="The two detectors run independently and agree on the board. The checkered floor in the top-left corner is exactly the kind of structure Canny alone latches onto; thresholding for white ignores it, and the intersection inherits that." />
+
 **Orientation** comes from template matching. A crop of the knight logo printed on the board is rotated to each of the four possible corner orientations and matched against the warped image. The best-scoring rotation names the alignment.
 
 **The grid.** CLAHE for local contrast, Gaussian blur, Canny, then dilation to close the broken edges. A Hough transform pulls out straight lines, which are filtered by angle and clustered to merge duplicates. Lines still go missing, so the gaps are filled by measuring the median spacing between the surviving lines and inferring where the absent ones belong. Intersecting the horizontal and vertical sets gives candidate points; keeping the 81 closest to the board centre, subject to a minimum separation, gives the 9×9 lattice. Without that separation constraint the selection collapses into a ring of points around the centre.
 
+<Figure src="/projects/chess-digital-twin/t1-grid.webp" alt="Five panels: CLAHE on the warped board, Canny edges after dilation, 217 raw Hough segments, the segments clustered into 14 vertical and 13 horizontal lines meeting at 182 points, and the 81 points kept nearest the centre" caption="Hough returns 217 segments; clustering by angle and position leaves 14 vertical and 13 horizontal lines, because the printed border contributes its own. Nothing needed inferring on this photo — the work is in selecting 81 points out of 182, which is what the minimum-separation constraint buys." />
+
 **Occupancy.** Each square is cropped and handed to `cv2.grabCut` with a hint mask of two concentric ellipses, sitting slightly above the square's centre because a chess piece is tall and narrow. The inner ellipse is labelled `GC_FGD`, the outer `GC_PR_FGD`. A square counts as occupied only if the resulting foreground ratio falls inside a band. GrabCut tends to either flood the whole square or return nothing when it fails, and both failure modes land outside that band.
 
-<Figure src="/projects/chess-digital-twin/task1.webp" alt="Classical pipeline stages" caption="Input photo, warped board with the recovered grid intersections, GrabCut segmentation, the resulting piece masks, and boxes mapped back onto the original image." />
+<Figure src="/projects/chess-digital-twin/t1-occupancy.webp" alt="Four panels: the two-ellipse GrabCut hint drawn on every square, the resulting foreground masks, the foreground ratio printed per square and shaded by whether it falls in the band, and the 24 squares called occupied" caption="The hint ellipses sit slightly above each square's centre because a piece is tall and narrow. The per-square foreground ratio makes the band argument visible: occupied squares land at 20–44%, empty ones at 5% when GrabCut returns nothing and 83–96% when it floods. All 64 squares are called correctly on this photo." />
 
 **Bounding boxes** were attempted twice. The first version thresholds in HSV and cleans up with erosion and dilation. It works for white pieces, whose hue separates cleanly, but produces many false positives and negatives on black ones; a distance-transform threshold and watershed improve it without fixing it. The second version instead starts from the GrabCut mask and iterates watershed on it, letting the mask grow past the square boundary and rebuilding the hint mask each round by eroding for sure foreground and dilating for sure background. Boxes are then read off by inverse-warping the *contours* back to the original image and fitting boxes there, rather than warping the boxes themselves.
 
 The second method scores slightly better and is the one used, but it leans on an accurate warp and degrades badly when corner detection goes wrong. A bad corner fit is detectable, so those images fall back to the HSV method, which never needed the warp in the first place.
+
+<Figure src="/projects/chess-digital-twin/t1-boxes.webp" alt="Four panels: the watershed hint mask with sure foreground in black and the unknown band in amber, the 24 separated watershed regions, the piece contours on the warped board, and the 24 boxes drawn on the original photo" caption="The GrabCut masks seed a watershed that is iterated ten times, eroding for sure foreground and dilating for sure background each round so the mask can grow past the square it started in. The surviving contours are inverse-warped to the original frame, and boxes are fitted there rather than warped as boxes." />
 
 On the 50-image test subset, occupancy reaches a mean F1 of 0.9039 (median 0.9387). Bounding boxes, scored by F1 at an IoU threshold of 0.5, reach 0.7336 (median 0.7560). The gap between the two is the expected one: deciding whether a square holds a piece is a much easier question than drawing a box around that piece under overlap and perspective distortion.
 
@@ -79,11 +85,28 @@ One result cuts against the premise of the task. The best YOLO detector from Tas
 
 Piece detection was never the bottleneck. YOLOv8n was the baseline, trained 100 epochs at batch size 64 with images resized to 960px and otherwise default settings, and reached mAP50 0.99 and mAP50-95 0.86. YOLOv8x and YOLO11s were trained afterwards; YOLOv8x came out on top at mAP50 0.995 and mAP50-95 0.875.
 
-Mapping those boxes onto squares is where it got hard. An end-to-end approach following Masouris et al., the authors of the ChessReD dataset, overfit badly and performed poorly on anything beyond common openings. So detection and board geometry were split apart: YOLO finds the pieces, a separate step finds the board, and each detection is assigned to the square containing the centre pixel of its bounding box's lower half. That assignment is enough to write out a FEN string.
+Mapping those boxes onto squares is where it got hard. An end-to-end approach following Masouris et al., the authors of the ChessReD dataset, classified each square directly through a fully connected head under cross-entropy loss. It overfit badly and performed poorly on anything beyond common openings.
+
+<Figure src="/projects/chess-digital-twin/t3-endtoend-loss.webp" alt="Loss curve for the end-to-end square classifier: training loss falls steadily from 1.0 to 0.25 over twenty epochs while validation loss stays flat at roughly 0.80 throughout" caption="Validation loss goes flat at epoch two and never moves again while training loss keeps falling. A semantic segmentation variant over the squares was tried as well and did no better." />
+
+So detection and board geometry were split apart: YOLO finds the pieces, a separate step finds the board, and each detection collapses to a single anchor point — horizontally centred, 90% of the way down the box, so it sits at the piece's base rather than on its body. Warping that point onto the rectified grid names a square, and that assignment is enough to write out a FEN string.
+
+<Figure src="/projects/chess-digital-twin/t3-pipeline.webp" alt="Five panels: YOLO detections on the photo, a zoom showing each box collapsing to an anchor point near its base, those points warped onto the rectified grid with the square each lands in outlined, the knight logo located in the top-right corner, and the digital board drawn from the predicted FEN" caption="The same photo as Task 1, end to end. YOLO finds all 24 pieces, each box reduces to one point, that point names a square, and template matching on the knight logo rotates the matrix into FEN order. The output is r4rk1/5pn1/bpN3pp/p1pP4/4PPPq/P6P/2Q3B1/3R1RK1 — edit distance 0 against the annotation. Detections here come from the trained YOLO11s checkpoint rather than YOLOv8x, which scores marginally higher." />
 
 The pipeline is scored by **edit distance** between the expanded FEN and the ground truth: the minimum number of single-character insertions, deletions and substitutions needed to turn one into the other, which is a direct count of misplaced, wrong and missing pieces.
 
-The first version of this pipeline used Task 1's classical corner detection, and across the whole of ChessReD2k it averaged **1.59 edits per board**. Storing the mismatched strings and reading through them showed where the edits were coming from: mostly poor detection of the board's orientation, where the corners are found well enough but applied the wrong way round, rotating the entire position.
+The first version of this pipeline used Task 1's classical corner detection, and across the whole of ChessReD2k it averaged **1.59 edits per board**. Storing the mismatched strings and reading through them showed where the edits were coming from, and the magnitude turned out to name the cause:
+
+<Table
+  head={["Edit distance", "What went wrong"]}
+  rows={[
+    ["1 – 3", "One occluded or ambiguous piece misread by the detector. The floor of the pipeline, set by YOLO."],
+    ["Above 10", "Orientation. The corners are found, applied the wrong way round, and every piece shifts together."],
+    ["Above 40", "Corner detection. The warp is wrong, so almost nothing lands on the right square."],
+  ]}
+/>
+
+The distribution is bimodal rather than spread out: a board is usually either exactly right or badly wrong, and the badly wrong ones are mostly orientation, where the corners are found well enough but applied the wrong way round, rotating the entire position.
 
 That is what turned corner detection into the real task. Five approaches were built and compared.
 
@@ -105,14 +128,22 @@ Corner quality is measured as mean Euclidean distance (MED) between predicted an
 
 Approach A is the Task 1 pipeline reused, and it is the one that motivated the rest: it relies on Canny edges, polygon approximation and template matching, and it struggles under occlusion and difficult lighting. Three things came out of the four that replaced it.
 
-**Augmentation made the difference for the CNN regressor.** C1 and C2 are the same idea — a CNN predicting four corner coordinates directly. C1 froze a ResNet50 backbone, trained a few added layers with MSE and Adam behind a sigmoid output, and was still unreliable after 150 epochs at 13.19% test MED. C2 switched to EfficientNetV2-S, unfroze every layer and added manual augmentation, using `tv_tensors.KeyPoints` so the corner coordinates transform along with the image. That reached 0.45%.
+**Augmentation made the difference for the CNN regressor.** C1 and C2 are the same idea — a CNN predicting four corner coordinates directly. C1 froze a ResNet50 backbone, trained a few added layers with MSE and Adam behind a sigmoid output, and was still unreliable after 150 epochs at 13.19% test MED. C2 switched to EfficientNetV2-S, unfroze every layer and added manual augmentation. Most augmentation libraries transform the image and leave the labels behind, which is useless when the label *is* a set of coordinates, so this needed `tv_tensors.KeyPoints` from a pre-release torchvision 0.23 to carry the corners through each rotation and perspective shift. That reached 0.45%.
+
+<Figure src="/projects/chess-digital-twin/t3-augmentation.webp" alt="Four panels: a board with predicted corners well off the true ones before augmentation, the same four corners zoomed in, then a board after augmentation with predictions on target, and its corners zoomed" caption="Ground truth in green, prediction in red, zoomed because at full-frame scale the difference is a few pixels. Without augmentation the predictions sit 5–10% of the image away from the corners; with it they land on them. Two different photos — the comparison is between the two models, not the two scenes." />
 
 **YOLO11s-pose found the board but not its corners.** Trained 100 epochs at batch size 64 and 640px, it located the board almost perfectly, with mAP50 of 1.0 on the board's bounding box, but its predicted keypoints rarely coincided with the true corners.
+
+**The segmentation route hit an annotation problem.** D segments the board with a U-Net, reads the corners off the mask, and hands orientation to a separate ResNet18 classifying 0°, 90°, 180° or 270°. A mask says nothing about which corner is which, so the classifier is doing the work — but the corner annotations mark only the board's *internal* corners and crop out the knight logo, the one feature that settles orientation. The fix was to feed the classifier a deliberately wider crop with enough margin to keep the logo in frame.
 
 **The heatmap U-Net scored best and still mislabels corners.** Predicting a probability distribution per corner rather than a coordinate gave well-defined peaks sitting on the true corners, at 0.31% test MED. But it sometimes swaps the heatmaps for the top-left and bottom-right corners. It learns to find corner-like features without reliably assigning the right label from the board's global orientation — the same orientation failure the edit-distance analysis had already pointed at.
 
 <Figure src="/projects/chess-digital-twin/task3.webp" alt="Photo of a chessboard with the four predicted corner heatmap peaks highlighted, and the reconstructed digital board" caption="Corner heatmap peaks on the physical board, and the digital twin generated from the resulting FEN string." />
 
-The final pipeline pairs YOLOv8x with the heatmap U-Net: find the corners, warp the board, map the centre of each detection box's lower half to its square, emit FEN.
+<Figure src="/projects/chess-digital-twin/t3-heatmap-failure.webp" alt="Diagnostic panel for one board: the input image, the four predicted corner heatmaps, the combined overlay, and the final predicted corners. The top-left heatmap has two competing peaks and the bottom-right one is diffuse with no clear peak." caption="A board where it goes wrong. The top-left heatmap lights up in two places and the bottom-right one never resolves into a peak at all, so the labels come out scrambled even though the board's corners are all found. Predicting a distribution lets the model say it is unsure — reading only the brightest pixel throws that away." />
 
-The limiting factor is the data. The set with annotated corners is small, which caps how well any of these generalise across varied conditions. Augmentation was only ever applied in the simplest of the corner methods, where it clearly helped, and the labelling problem calls for an explicit orientation module rather than asking the corner model to resolve it implicitly. Neither report re-measures edit distance after swapping the U-Net corners into the pipeline, so 1.59 remains the number for the classical-corner version rather than for the final one.
+The final pipeline pairs YOLOv8x with the heatmap U-Net: find the corners, warp the board, drop each detection to its anchor point, read off the square, emit FEN.
+
+Run over the whole of ChessReD2k, that pipeline averages **0.0197 edits per board** — roughly two misplaced pieces per hundred boards, against 1.59 for the version that used classical corners. Almost all of the eighty-fold gap is the catastrophic tail closing: better corners mean fewer boards where the warp is wrong and nothing lands on the right square. The two written reports stop at 1.59 and never re-measure, so that final figure comes from the delivery notebook rather than from either PDF.
+
+The limiting factor is the data. The set with annotated corners is small, which caps how well any of these generalise across varied conditions. Augmentation was only ever applied in the simplest of the corner methods, where it clearly helped, and the labelling problem calls for an explicit orientation module rather than asking the corner model to resolve it implicitly.

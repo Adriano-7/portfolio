@@ -1,5 +1,6 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import type { MDXComponents } from "mdx/types";
+import { FigureImage } from "@/components/ui/FigureImage";
 
 export function Lead({ children }: { children: ReactNode }) {
   return (
@@ -10,10 +11,7 @@ export function Lead({ children }: { children: ReactNode }) {
 export function Figure({ src, alt, caption }: { src: string; alt: string; caption?: string }) {
   return (
     <figure className="my-10">
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-white">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={alt} loading="lazy" className="block w-full" />
-      </div>
+      <FigureImage src={src} alt={alt} caption={caption} />
       {caption && <figcaption className="mono mt-3 normal-case tracking-normal text-muted">{caption}</figcaption>}
     </figure>
   );

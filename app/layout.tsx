@@ -11,6 +11,7 @@ import { Menu } from "@/components/ui/Menu";
 import { Loader } from "@/components/ui/Loader";
 import { RouteSync } from "@/components/ui/RouteSync";
 import { SmoothScroll } from "@/components/ui/SmoothScroll";
+import { Lightbox } from "@/components/ui/Lightbox";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Header />
         <Menu />
         <Loader count={projects.length} />
+        <Lightbox />
         <Analytics />
       </body>
     </html>

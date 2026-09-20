@@ -2,6 +2,8 @@ import { create } from "zustand";
 
 export type View = "spiral" | "list";
 
+export type Figure = { src: string; alt: string; caption?: string };
+
 type State = {
   view: View;
   setView: (v: View) => void;
@@ -17,6 +19,9 @@ type State = {
   setLoaded: (v: boolean) => void;
   menuOpen: boolean;
   setMenuOpen: (v: boolean) => void;
+  /** figure opened in the focus overlay, null when closed */
+  lightbox: Figure | null;
+  setLightbox: (f: Figure | null) => void;
   pathname: string;
   setPathname: (p: string) => void;
   /** slug the helix is animating towards before navigation */
@@ -44,6 +49,8 @@ export const useStore = create<State>((set) => ({
   setLoaded: (loaded) => set({ loaded }),
   menuOpen: false,
   setMenuOpen: (menuOpen) => set({ menuOpen }),
+  lightbox: null,
+  setLightbox: (lightbox) => set({ lightbox }),
   pathname: "/",
   setPathname: (pathname) => set({ pathname }),
   transitioning: null,
