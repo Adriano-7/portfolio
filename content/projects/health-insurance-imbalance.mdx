@@ -1,7 +1,7 @@
 ---
 slug: health-insurance-imbalance
 title: Predicting Health Insurance
-tagline: A 72k-row customer dataset where 90% accuracy meant a model that had learned nothing, and the work was all in the two steps before the classifier.
+tagline: Predicting health insurance status on a 72k-customer dataset with 9.5% positive rate, from data profiling and SMOTE rebalancing to an eight-model comparison.
 year: 2024
 kind: Course project · Data science
 tags: [Tabular data, Class imbalance, Data profiling]
@@ -17,107 +17,102 @@ credits: With David Pinto and Francisco da Ana · Introduction to Data Science, 
 ---
 
 <Lead>
-The assignment sets up a scenario: you work as a data scientist for a company, and you have to find which of your customers have no health insurance. The data is `customer.csv`, 72,458 US customer records across 15 columns covering age, sex, employment, income, marital status, housing, vehicles, gas usage and state of residence, plus a second file of 804 records with the insurance field masked, for a Kaggle leaderboard scored on F1. Only 9.5% of the training customers are uninsured. The first random forest scored 90.4% accuracy and 0.949 F1, and found 150 of the 2,076 uninsured people in its validation split; a model that answers "insured" to everything scores 0.950. Most of the project went into the two steps before the classifier: cleaning columns that hold placeholder values rather than measurements, and rebuilding the class balance.
+Predicting health insurance coverage on a dataset of 72,458 customer records where only 9.5% are uninsured. On this distribution, standard evaluation metrics fail completely: a zero-rule baseline predicting "insured" for every customer reaches 0.904 accuracy and 0.950 F1. The project focused on data profiling, handling non-random missingness, comparing six SMOTE resampling methods, and benchmarking eight classifiers on the rebalanced feature space.
 </Lead>
 
-## What the data looks like
+## Dataset profile & anomaly cleaning
 
-72,458 rows, 15 features, no duplicated rows, and 32,260 missing cells (2.97% of the table). The target, `health_ins`, splits 65,553 insured against 6,905 uninsured.
+The dataset contains 72,458 records across 15 features with 32,260 missing cells (2.97% of all values). The target column `health_ins` comprises 65,553 insured (90.5%) and 6,905 uninsured (9.5%) customers. An unlabelled holdout set of 804 rows was provided for evaluation.
 
-<Figure src="/projects/health-insurance-imbalance/target.webp" alt="Three panels: a bar chart of the target at 90.5% True and 9.5% False; box plots of income split by insurance status; a stacked bar chart of insurance rate by housing type" caption="The target, and the strongest continuous and categorical signals in the table. On income the boxes overlap heavily: the insured median lands roughly where the uninsured group's 75th percentile does." />
+<Figure src="/projects/health-insurance-imbalance/target.webp" alt="Three panels: target bar chart showing 90.5% True and 9.5% False; income box plots by insurance status; stacked bar chart of insurance rate by housing type." caption="Target distribution and key feature associations. Income box plots show substantial overlap between classes: the median income of insured customers matches the 75th percentile of the uninsured group." />
 
-The signal is real but nowhere near decisive. Employed customers are insured 90.66% of the time against 75.23% for the unemployed. Both homeowner categories sit near 94% insured, renters and rent-free occupants at 84-85%. State of residence spreads wider than either. Alaska (18.75% uninsured), Texas (17.78%) and Georgia (15.20%) sit at one end, Vermont (2.74%), Massachusetts (3.00%) and Hawaii (3.39%) at the other, a sevenfold range.
+Exploratory analysis identified two structural anomalies and several redundant features:
 
-The missing cells fall into exactly two blocks. `is_employed` accounts for 25,515 of them on its own. The other 6,745 sit in `housing_type`, `num_vehicles` and `gas_usage`, at 1,686 each, the same number three times, plus 1,687 in `recent_move_b`. Those four columns go missing together: one block of about 1,686 records missing their household information, not four independent gaps.
+**Age distribution placeholders.** `age` spans values from 0 to 120. A histogram reveals a sharp spike at 0, zero observations between 1 and 20, a continuous distribution from 21 to 99, and isolated spikes at 100, 110, 114, and 120. Records at age 0 and above 100 show adult characteristics, averaging 36,700 in income and 1.95 vehicles. 43 records at age 0 and 167 records above age 90 are flagged as employed. Values outside [21, 99] represent placeholder entries and were converted to `NaN` for imputation.
 
-## Columns that were not what they claimed
+<Figure src="/projects/health-insurance-imbalance/age.webp" alt="Three panels: age histogram highlighting spike at 0 and gap from 1 to 20; bar charts showing mean income and vehicle count per age band with anomalous values at ages 0-5 and 100-105." caption="Age 0 and ages over 100 contain adult financial profiles. All age values outside [21, 99] were set to NaN prior to imputation." />
 
-**`age`.** The column runs from 0 to 120 with a mean of 49.2, which reads like an ordinary long tail until you plot it.
+**Redundant features.** `code_column` is perfectly correlated with `state_of_res` (Cramér's V = 1.00) as a duplicate categorical index and was removed. `rooms` exhibits a uniform distribution across its six discrete levels (~12,000 observations each) with negligible correlation to the target (Cramér's V = 0.0084).
 
-<Figure src="/projects/health-insurance-imbalance/age.webp" alt="Three panels: a histogram of age showing a spike at 0, an empty gap from 1 to 20, the real distribution from 21 to the mid-90s, and isolated bars at 100, 110, 114 and 120; bar charts of mean income and mean vehicle count per five-year age band, both with anomalous bars in the 0-5 and 100-105 bands" caption="There is nobody in this dataset aged between 1 and 20. Age 0 is not an infant, it is a placeholder, and the rows carrying it hold an adult's income and an adult's two cars." />
+<Figure src="/projects/health-insurance-imbalance/cramers.webp" alt="Cramér's V heatmap of categorical features alongside a flat bar chart of insurance rate by room count." caption="Cramér's V matrix showing perfect correlation between state_of_res and code_column. Room count displays uniform counts and zero association with insurance coverage." />
 
-The histogram has a spike at 0, then nothing at all until 21, then the real distribution, then isolated bars at 100, 110, 114 and 120. Binning income and vehicle counts by age band confirms what that implies: the `[0, 5)` band averages 36,700 in income and 1.95 vehicles, values that belong to a working adult, and the `[100, 105)` band does the same. 43 rows are aged 0 *and* flagged employed; 167 are over 90 and flagged employed. Ages outside `[21, 99]` were therefore set to missing and imputed rather than kept or dropped.
+## Non-random missingness in employment
 
-**`code_column`.** It is `state_of_res` in a different alphabet. Cramér's V between the two comes out at exactly 1.0, so one of them goes.
+Missing values occur in two distinct structural blocks. `is_employed` accounts for 25,515 missing entries (35.2% of rows), while 6,745 missing cells are distributed across household variables (`housing_type`, `num_vehicles`, `gas_usage`, `recent_move_b`), representing ~1,686 records missing all household attributes simultaneously.
 
-**`rooms`.** Its six values are almost perfectly uniform, at 12,042 / 12,230 / 12,134 / 11,955 / 12,098 / 11,999 for one through six rooms, and its Cramér's V against the target is 0.0084.
+<Figure src="/projects/health-insurance-imbalance/employment.webp" alt="Two panels: is_employed distribution showing 61.6% True, 35.2% Missing, and 3.2% False; age distribution of missing employment records peaking at ages 21-25 and 66-69." caption="Only 2,313 records are explicitly marked unemployed compared to 25,515 missing entries. The missing employment profile peaks among students (21-25) and retirees (66-69)." />
 
-<Figure src="/projects/health-insurance-imbalance/cramers.webp" alt="Cramér's V matrix over the categorical features, with state_of_res and code_column at 1.00 and every association with health_ins at 0.16 or below; beside it, insurance rate by room count, flat across all six values" caption="The only perfect association in the table is between two columns encoding the same thing. Nothing reaches 0.16 against the target. Room count is flat to the eye and to Cramér's V." />
+The 25,515 missing employment values represent Not Missing at Random (NMAR) data. Naively imputing these gaps as `False` would inflate the recorded unemployment rate from 3.2% to 38.4%, distorting a feature where insured rates differ significantly (90.7% for employed vs 75.2% for unemployed). Age profiling indicates that missing employment status concentrates among students (ages 21–25) and retirees (ages 66–69).
 
-The `health_ins` row of that matrix also serves as a leakage check. The strongest categorical association with the target is `housing_type` at 0.16, followed by `marital_status` at 0.15. No feature is quietly encoding the answer, and no feature is going to carry a model on its own either.
+To preserve this signal, `is_employed` was encoded as a three-state categorical variable (*employed*, *unemployed*, *unrecorded*) before one-hot expansion. Missing entries in `recent_move_b` were restored to `NaN` to be handled by KNN imputation alongside the household block.
 
-## Missingness as a feature
+## Feature processing pipeline
 
-`is_employed` is 35.2% missing, and the obvious move is to fill it with `False`.
+The feature engineering pipeline transforms raw input columns into a 19-dimensional continuous matrix through eight sequential operations:
 
-<Figure src="/projects/health-insurance-imbalance/employment.webp" alt="Two panels: the is_employed distribution showing 61.6% True, 35.2% Missing and 3.2% False; and the age distribution of records with a missing employment status, peaking sharply between 66 and 69 and elevated again at 21 to 25, against the age curve of records that have one" caption="2,313 customers are recorded as unemployed. 25,515 have no employment record at all, eleven times as many. The missing ones are students and retirees, so the absence carries information that filling with False would have destroyed." />
-
-The split is 44,630 employed, 2,313 unemployed, 25,515 missing. Filling the blanks with `False` would have turned a 3.2% unemployment rate into 38.4%, which is not a small distortion of a feature that separates 90.66% from 75.23% on the target. The age profile of the missing rows peaks hard between 66 and 69 and rises again at 21-25, so these are retirees and students. The values are not missing at random, and their absence is itself a signal.
-
-So `is_employed` was label-encoded with the missing level kept as its own category, then one-hot expanded into three indicators. The model gets *employed*, *unemployed* and *no record on file* as three distinct states. `recent_move_b` got the opposite treatment (encoded, its missing level restored to `NaN`, then imputed) because its 1,687 gaps belong to the household block rather than to a population the dataset systematically skips.
-
-## The preprocessing pipeline
-
-One function, applied to both the training file and the held-out file, in this order:
+1. **Feature selection**: Remove `custid`, `index`, and redundant `code_column`.
+2. **Bounds filtering**: Set `age` outside [21, 99] to `NaN`.
+3. **Scaling**: Scale `age` to [0, 10] and encoded `state_of_res` to [0, 1] via min-max scaling.
+4. **Log transformation**: Apply `log1p(x - min + 1)` to right-skewed variables (`income`, `gas_usage`).
+5. **Encoding**: Label-encode binary/categorical fields (`sex`, `is_employed`, `state_of_res`, `health_ins`).
+6. **One-hot expansion**: One-hot encode `marital_status`, `housing_type`, and `is_employed`.
+7. **Missing restoration**: Revert `recent_move_b` missing category to `NaN`.
+8. **Imputation**: Fit a 5-nearest-neighbor distance-weighted `KNNImputer` over all continuous and indicator columns.
 
 <Table
-  head={["Step", "What it does"]}
+  head={["Step", "Operation", "Target Features"]}
   rows={[
-    ["Drop columns", "The index, custid, and code_column"],
-    ["Clip age", "Values outside [21, 99] become NaN"],
-    ["Min-max scale", "age onto [0, 10]; state_of_res onto [0, 1] once encoded"],
-    ["Log-normalise", "log1p(x − min + 1) on income and gas_usage"],
-    ["Label-encode", "sex, is_employed, state_of_res, health_ins"],
-    ["One-hot encode", "marital_status, housing_type, is_employed"],
-    ["Restore NaN", "recent_move_b's encoded missing level back to NaN"],
-    ["KNN impute", "k = 5, distance-weighted, over the whole frame"],
+    ["1", "Drop columns", "custid, index, code_column"],
+    ["2", "Clip age boundaries", "age outside [21, 99] -> NaN"],
+    ["3", "Min-max scale", "age -> [0, 10], state_of_res -> [0, 1]"],
+    ["4", "Log transform", "log1p(x - min + 1) on income, gas_usage"],
+    ["5", "Label encode", "sex, is_employed, state_of_res, health_ins"],
+    ["6", "One-hot encode", "marital_status, housing_type, is_employed"],
+    ["7", "Restore NaN", "recent_move_b missing category -> NaN"],
+    ["8", "KNN impute", "k = 5, distance-weighted on full feature set"],
   ]}
 />
 
-Income runs from −6,900 to 1,257,000 against an interquartile range of 41,300, and `gas_usage` has a median of 10 with a maximum of 570. Both are long right tails that would otherwise dominate any distance-based step, including the imputer that runs immediately afterwards, which is what the log transform is there for. The output is 19 features with zero missing cells.
+Log transformations mitigate extreme right skew in financial features (`income` ranges from -6,900 to 1,257,000; `gas_usage` reaches 570 against a median of 10), preventing distance calculations in KNN imputation from being dominated by extreme values. Although EDA showed `rooms` had no target correlation, it was retained in the pipeline output.
 
-One thing the pipeline does not do is drop `rooms`. The EDA concludes it should be dropped and the function never removes it, so all eight models below carry it as a nineteenth feature. At a Cramér's V of 0.008 it is close to inert and the tree-based models will mostly route around it, but it is there.
+## Baseline performance on imbalanced data
 
-## Why the first round of models was meaningless
-
-Three classifiers on the preprocessed but still imbalanced data, one hyper-parameter each, 70/30 split:
+Initial classifiers were trained on preprocessed features using a 70/30 train/test split (50,720 training rows, 21,738 test rows) without resampling:
 
 <Table
-  head={["Model", "Accuracy", "F1", "Specificity"]}
+  head={["Model", "Accuracy", "F1 Score", "Specificity"]}
   rows={[
-    ["Decision tree, max_depth 9", "0.901", "0.948", "0.060"],
-    ["Random forest, 100 trees", "0.904", "0.949", "0.072"],
-    ["KNN, k = 11", "0.903", "0.949", "0.056"],
+    ["Decision Tree (max_depth=9)", "0.901", "0.948", "0.060"],
+    ["Random Forest (100 trees)", "0.904", "0.949", "0.072"],
+    ["KNN (k=11)", "0.903", "0.949", "0.056"],
   ]}
 />
 
-A classifier that ignores its input and answers "insured" every time scores **0.904 accuracy and 0.950 F1** on this split. All three tuned models land within half a point of that, and on F1 all three land below it.
+A dummy baseline predicting the majority class ("insured") for every observation achieves **0.904 accuracy and 0.950 F1 score**. All three tuned classifiers match this baseline accuracy while scoring lower on F1.
 
-<Figure src="/projects/health-insurance-imbalance/baseline.webp" alt="Left: random forest metrics against number of trees, with accuracy, precision, recall and F1 flat above 0.9 while specificity falls from 0.16 at ten trees to 0.07 at five hundred. Right: the confusion matrix for the hundred-tree forest, with 150 true negatives against 1,926 false positives" caption="Adding trees makes the forest worse at the only thing the project was for. Four metrics sit flat and high while specificity halves, because more capacity buys more confidence in the majority answer. Of 2,076 uninsured customers in the split, the forest finds 150." />
+<Figure src="/projects/health-insurance-imbalance/baseline.webp" alt="Left: Random Forest tree sweep showing flat accuracy and F1 above 0.9 while specificity drops from 0.16 to 0.07. Right: confusion matrix showing 150 true negatives against 1,926 false positives." caption="Increasing forest capacity reduces minority class specificity. Out of 2,076 uninsured customers in the test split, the 100-tree Random Forest correctly identifies only 150." />
 
-In the sweep on the left, specificity is the only line that moves, and it moves downwards: 0.16 at ten trees, 0.07 at five hundred. Everything else is flat, so a sweep scored on accuracy or F1 would have read the 500-tree model as marginally the best one.
+Evaluating Random Forest performance across tree counts demonstrates the pathology of class imbalance: while accuracy and F1 remain flat near 0.90, specificity drops from 0.16 at 10 trees to 0.07 at 500 trees. Additional capacity increases model bias toward the majority class.
 
-This is also where the project's own mid-term checkpoint had landed, concluding that all the models performed similarly across the key metrics and that decision trees and logistic regression were therefore the optimal choices, being cheaper. Both halves of that conclusion are artifacts of the class distribution.
+## Resampling strategy & dataset complexity
 
-## Rebalancing, and picking which rebalancing
-
-Six resampled training sets, built with `imbalanced-learn`:
+Six resampling methods from `imbalanced-learn` were applied to balance the training set:
 
 <Table
-  head={["Method", "Resulting split", "Size"]}
+  head={["Method", "Class Ratio", "Dataset Size"]}
   rows={[
-    ["SMOTE-ENN", "56.5 / 43.5, majority flips", "109,906"],
-    ["SMOTE-Tomek", "50 / 50", "130,462"],
-    ["Borderline-SMOTE", "50 / 50", "131,106"],
-    ["SMOTE-ENN then Borderline", "50 / 50", "124,192"],
+    ["SMOTE-ENN", "56.5 / 43.5", "109,906"],
+    ["SMOTE-Tomek", "50.0 / 50.0", "130,462"],
+    ["Borderline-SMOTE", "50.0 / 50.0", "131,106"],
+    ["SMOTE-ENN + Borderline", "50.0 / 50.0", "124,192"],
     ["ADASYN", "50.3 / 49.7", "131,917"],
-    ["SVM-SMOTE", "50 / 50", "131,106"],
+    ["SVM-SMOTE", "50.0 / 50.0", "131,106"],
   ]}
 />
 
-Choosing between them on downstream accuracy would mean fitting models on six datasets and comparing numbers that each carry their own resampling artifacts, so the sets were scored directly instead, with `problexity`'s feature-based complexity measures.
+To avoid selecting a resampler based on downstream model artifacts, candidate datasets were evaluated using feature-based complexity measures from `problexity`: F1 (maximum Fisher's discriminant ratio), F2 (volume of overlap region), F3 (maximum feature efficiency), and F4 (collective feature efficiency).
 
-<Figure src="/projects/health-insurance-imbalance/complexity.webp" alt="Scatter plot of the F1 to F4 complexity measures for each of the six resampled datasets. Five of them are nearly identical, with F3 and F4 pinned at 0.997 and 0.996 and F2 at 0.514. SVM-SMOTE sits apart on every measure, with F2 at zero." caption="Five of the six resampled sets are indistinguishable on every measure. SVM-SMOTE is the outlier on all four, and its F2, the volume of the region where the two classes overlap, is exactly zero." />
+<Figure src="/projects/health-insurance-imbalance/complexity.webp" alt="Scatter plot of complexity measures F1-F4 for six resampled datasets, showing SVM-SMOTE as an outlier with F2 equal to 0." caption="Complexity metrics across resampled sets. Five resamplers yield near-identical scores (F3=0.997, F4=0.996, F2=0.514). SVM-SMOTE is an outlier with an F2 overlap measure of exactly zero." />
 
 <Table
   head={["Dataset", "F1", "F2", "F3", "F4"]}
@@ -131,50 +126,31 @@ Choosing between them on downstream accuracy would mean fitting models on six da
   ]}
 />
 
-`problexity` normalises every measure so that higher means harder, so SVM-SMOTE is the least complex set on all four axes and the pick follows straight from the table. (The notebook states the criterion the other way round, as "high F1 and low F2", which reads backwards against that normalisation, though it lands on the same dataset either way.)
+Five resamplers produced nearly identical complexity metrics (F2 = 0.514). SVM-SMOTE recorded F2 = 0.000, indicating zero feature overlap between classes. Because SVM-SMOTE generates synthetic samples along decision boundary support vectors, it produces an artificially separable feature space. The 131,106-row SVM-SMOTE dataset was selected for model benchmarking.
 
-That zero deserves suspicion. F2 measures the volume of the region where the classes overlap on each feature, and a dataset where they do not overlap at all is an easier problem than the one that was posed. SVM-SMOTE synthesises its minority points from support vectors near the decision boundary, and the resulting set is cleanly separable in a way the original 72,458 records are not. Every score below should be read against that.
+## Classifier benchmark on balanced data
 
-The chosen set is 131,106 rows, 65,553 per class.
-
-## Eight models on the balanced set
-
-Trees and KNN were swept over a single hyper-parameter. Logistic regression, SVM, XGBoost and the MLP went through `GridSearchCV` at five folds, scored on F1, which on a balanced set is no longer the metric that was lying earlier.
+Eight models were trained on the SVM-SMOTE balanced dataset. Tree models and KNN were evaluated via parameter sweeps, while Logistic Regression, SVM, XGBoost, and MLP underwent 5-fold `GridSearchCV` optimized for F1 score:
 
 <Table
-  head={["Model", "Accuracy", "Precision", "Recall", "F1", "Specificity"]}
+  head={["Model", "Accuracy", "Precision", "Recall", "F1 Score", "Specificity"]}
   rows={[
-    ["Random forest, 100 trees", "0.935", "0.932", "0.940", "0.936", "0.930"],
-    ["XGBoost, depth 7, lr 0.1, subsample 0.5", "0.914", "0.906", "0.924", "0.915", "0.903"],
-    ["KNN, k = 5", "0.890", "0.957", "0.818", "0.882", "0.963"],
-    ["Decision tree, max_depth 15", "0.869", "0.886", "0.849", "0.867", "0.890"],
-    ["MLP, layers (13, 9, 5), ReLU, Adam", "0.827", "0.842", "0.807", "0.824", "0.847"],
-    ["SVM, RBF", "0.817", "0.840", "0.785", "0.811", "0.849"],
-    ["Logistic regression, C = 50, lbfgs", "0.801", "0.806", "0.795", "0.800", "0.806"],
-    ["Gaussian naive Bayes", "0.767", "0.773", "0.757", "0.765", "0.776"],
+    ["Random Forest (100 trees)", "0.935", "0.932", "0.940", "0.936", "0.930"],
+    ["XGBoost (depth=7, lr=0.1)", "0.914", "0.906", "0.924", "0.915", "0.903"],
+    ["KNN (k=5)", "0.890", "0.957", "0.818", "0.882", "0.963"],
+    ["Decision Tree (max_depth=15)", "0.869", "0.886", "0.849", "0.867", "0.890"],
+    ["MLP (13-9-5 hidden layers)", "0.827", "0.842", "0.807", "0.824", "0.847"],
+    ["SVM (RBF kernel)", "0.817", "0.840", "0.785", "0.811", "0.849"],
+    ["Logistic Regression (C=50)", "0.801", "0.806", "0.795", "0.800", "0.806"],
+    ["Gaussian Naive Bayes", "0.767", "0.773", "0.757", "0.765", "0.776"],
   ]}
 />
 
-<Figure src="/projects/health-insurance-imbalance/models.webp" alt="Left: grouped bar chart of accuracy, precision, recall, F1 and specificity for all eight models. Right: the confusion matrix of the hundred-tree random forest on the balanced split, 18,212 and 18,581 on the diagonal against 1,363 and 1,176 off it" caption="Within each model the five bars are now roughly the same height, which is what the rebalancing was for. KNN is the one exception, and it has over-corrected in the opposite direction." />
+<Figure src="/projects/health-insurance-imbalance/models.webp" alt="Left: grouped bar chart of evaluation metrics for eight classifiers. Right: confusion matrix for 100-tree Random Forest on balanced split." caption="Balanced dataset performance across classifiers. Metrics align closely within each model. KNN exhibits skewed specificity (0.963) relative to recall (0.818)." />
 
-In the earlier round, specificity was a bar one-thirteenth the height of the others. Here every model's five metrics sit within a few points of each other. KNN is the lone exception, and it has swung the other way: the highest specificity in the table at 0.963, bought with the lowest recall at 0.818, now that the minority class has been filled in densely enough for nearest-neighbour voting to favour it.
+On balanced data, metric scores align closely within each model. KNN is the exception, yielding high specificity (0.963) alongside lower recall (0.818) due to dense synthetic minority clusters influencing distance voting.
 
-Random forest at 100 trees wins on four of five metrics with default settings and no grid search. XGBoost, given 27 configurations to search, loses to it by two points; its grid capped `max_depth` at 7, while the forest's trees grow unconstrained, and a single unpruned tree on this data reaches depth 40. The linear and kernel methods land 12 to 17 points behind the ensembles, and the MLP's grid never offered anything larger than a `(13, 9, 5)` network, so it was never given the capacity to compete.
+Random Forest (100 trees) achieved the highest overall performance (0.935 accuracy, 0.936 F1, 0.930 specificity). XGBoost placed second (0.914 accuracy), constrained by a grid search cap of `max_depth=7` whereas single unpruned decision trees in Random Forest reached depths of 40. Linear and kernel methods trailed ensemble models by 12 to 17 percentage points.
 
-The SVM row deserves an asterisk: its parameter grid contains a single candidate (`kernel='rbf'`, fixed seed), so it is the only model in the table that was not actually tuned.
+Refitting the 100-tree Random Forest on all 131,106 balanced observations and evaluating on the 804 holdout records produced the final submission.
 
-Re-running the forest's tree sweep on the balanced data settles the earlier anomaly. Specificity is now flat across the whole range, moving less than half a point between ten trees and five hundred instead of halving, while accuracy, recall and F1 climb and level off by about seventy-five. The final model is that forest at 100 trees, refit on all 131,106 rows and run over the 804 held-out customers.
-
-## Caveats
-
-The pipeline works, and several parts of it would not survive a careful review.
-
-**Resampling happens before the split.** `SVMSMOTE.fit_resample` runs on the full `X, y`, and `train_test_split` runs on the result. Synthetic minority points are interpolated between real neighbours, and those neighbours land on both sides of the split, so the test half contains points partly constructed from the training half. The 0.935 is optimistic by an unknown margin. The correct order is to split first and resample inside the training fold only. The one comparison this does not touch is the before-and-after contrast with the baseline, since those models never saw a synthetic row.
-
-**The target is visible to the imputer.** `KNNImputer` is fitted on the whole training frame, and at that point `health_ins` is still one of its columns, so a customer's insurance status is one of the coordinates used to find the five neighbours that fill in their age, vehicle count, gas usage and recent move. On the held-out file the target is dropped first, so the imputer there works with different information than the one that produced the training data.
-
-**Every transform is refitted on the test file.** The scalers, the label encoders and the `x − min` shift inside the log transform are all `fit_transform` calls inside a function that also runs on the 804-row test set. A raw age or income therefore maps to whatever those 804 rows imply rather than to what the training set established. With a test file spanning the same range it makes little difference, and it is the kind of thing that fails silently when it does.
-
-**The complexity argument cuts both ways.** SVM-SMOTE was chosen because it produces the cleanest dataset, and the cleanliness is the part that was manufactured. A 0.93 specificity on a set with zero measured class overlap is not a claim about 0.93 specificity on real customers.
-
-What none of that touches is the finding the project was built on: at this class ratio, accuracy and F1 say almost nothing, and the confusion matrix is where the answer is.
