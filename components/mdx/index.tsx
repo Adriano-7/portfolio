@@ -51,4 +51,42 @@ function A(props: ComponentPropsWithoutRef<"a">) {
   return <a {...props} target={external ? "_blank" : undefined} rel={external ? "noreferrer" : undefined} />;
 }
 
-export const mdxComponents: MDXComponents = { Lead, Figure, Table, a: A };
+export function Video({
+  src,
+  caption,
+  poster,
+  controls = true,
+  autoPlay = false,
+  loop = false,
+  muted = false,
+}: {
+  src: string;
+  caption?: string;
+  poster?: string;
+  controls?: boolean;
+  autoPlay?: boolean;
+  loop?: boolean;
+  muted?: boolean;
+}) {
+  return (
+    <figure className="my-10">
+      <div className="overflow-hidden rounded-xl border border-white/10 bg-black">
+        <video
+          src={src}
+          poster={poster}
+          controls={controls}
+          autoPlay={autoPlay}
+          loop={loop}
+          muted={muted}
+          playsInline
+          preload="metadata"
+          className="block aspect-video w-full"
+        />
+      </div>
+      {caption && <figcaption className="mono mt-3 normal-case tracking-normal text-muted">{caption}</figcaption>}
+    </figure>
+  );
+}
+
+export const mdxComponents: MDXComponents = { Lead, Figure, Table, Video, video: Video, a: A };
+
