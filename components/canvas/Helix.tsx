@@ -300,11 +300,10 @@ export function Helix({
       const pose = cardPose(wrapT(i, progress, n), n, params);
 
       // target pose in group-local space
-      let tx = pose.x, ty = pose.y, tz = pose.z, tscale = pose.scale;
+      const tx = pose.x, ty = pose.y, tz = pose.z, tscale = pose.scale;
       let alphaTarget = pose.fade;
-      let snap = false;
       let hold = false;
-      _e.set(0, pose.rotY, 0);
+      _e.set(pose.rotX, pose.rotY, pose.rotZ);
       _q.setFromEuler(_e);
 
       if (!spiralVisible) alphaTarget = 0;
@@ -321,7 +320,7 @@ export function Helix({
       }
 
       // smooth toward target; snap on wrap jumps
-      const jump = Math.abs(ty - c.pos.y) > params.stepY * 3 || snap;
+      const jump = Math.abs(ty - c.pos.y) > params.stepY * 3;
       if (flying) {
         // scripted path from where the card was clicked to the (live) cover position
         const k = easeInOut(tr!.t);
