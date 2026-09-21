@@ -4,7 +4,9 @@ import { FigureImage } from "@/components/ui/FigureImage";
 
 export function Lead({ children }: { children: ReactNode }) {
   return (
-    <p className="!mt-0 !text-[1.25rem] !leading-[1.55] !text-fg md:!text-[1.45rem]">{children}</p>
+    <div className="!mt-0 !text-[1.125rem] !leading-[1.65] !text-fg [&>p]:!mt-0 [&>p]:!text-[1.125rem] [&>p]:!leading-[1.65] [&>p]:!text-fg">
+      {children}
+    </div>
   );
 }
 

@@ -1,6 +1,8 @@
 # Portfolio
 
-A personal site for machine-learning work: a 3D helix of project cards you scroll through, a list view, and case-study pages. Built with Next.js 16, React Three Fiber and GSAP.
+![Portfolio Preview](./public/preview.png)
+
+A personal site to showcase my projects. A 3D helix of project cards you scroll through, a list view, and case-study pages. Built with Next.js, React Three Fiber and GSAP.
 
 ## Run
 
@@ -11,7 +13,7 @@ pnpm build      # static production build
 pnpm lint
 ```
 
-## Where things live
+## Structure
 
 | Path | What |
 | --- | --- |
@@ -32,12 +34,4 @@ pnpm lint
 2. Add `public/projects/<slug>/cover.webp` and `cover-sm.webp` (16:10). `node scripts/covers.mjs <dir>` shows how they were made.
 3. Write the body using `<Lead>`, `<Figure>` and `<Table>` (see `components/mdx`).
 
-## Behaviour notes
-
-- Home page: the helix drifts slowly while idle; wheel, drag, touch and arrow keys rotate it; the bottom-left caption names the front card (or the hovered one); click opens the case study.
-- `?view=list` opens the list view directly. Reduced-motion users and browsers without WebGL get the list view.
-- The canvas lives in the root layout so textures survive navigation.
-
-## Deploy
-
-Push to GitHub and import the repo in Vercel. No environment variables are needed. Update `site.url` in `lib/site.ts` to the final domain for correct Open Graph and sitemap URLs.
+*Inspired by [Pacôme Pertant's](https://pacomepertant.com/) portfolio.*
