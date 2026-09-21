@@ -15,13 +15,13 @@ const vertexShader = /* glsl */ `
     float arch = sin(uv.x * 3.14159265);
     float rear = smoothstep(0.12, 0.95, uDepth);
     float side = smoothstep(0.12, 0.85, uSide);
-    float shape = max(rear, side * 0.82);
-    // Keep the side silhouette mostly planar; reserve the stronger flex for the rear.
-    float curl = uBend * (1.0 + rear * 0.8 + side * 0.2);
+    // Keep the side silhouette planar to prevent edge-on self-overlap and sawtooth artifacts; reserve flex and skew for the rear.
+    float curl = uBend * (1.0 + rear * 0.8) * (1.0 - side);
+    float shape = rear * (1.0 - side * 0.5);
     p.z += arch * curl;
     p.y += arch * sin(uv.y * 3.14159265) * curl * 0.12;
     p.x += sin(uv.y * 3.14159265) * curl * rear * 0.08;
-    // Cards skew as they turn around the sides, not only when they reach the rear.
+    // Cards skew as they turn around to the rear
     float lean = sin(uSeed * 1.73 + 0.9);
     p.x += (uv.y - 0.5) * shape * lean * 0.32;
     p.y += (uv.x - 0.5) * shape * lean * 0.2;
@@ -100,6 +100,7 @@ const fragmentShader = /* glsl */ `
     float d = roundedBox(p, uPlaneSizes * 0.5, uRadius);
     float aa = fwidth(d);
     float alpha = 1.0 - smoothstep(-aa, aa, d);
+    if (alpha <= 0.0) discard;
 
     gl_FragColor = vec4(col, alpha * uOpacity);
     #include <colorspace_fragment>
