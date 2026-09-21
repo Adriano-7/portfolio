@@ -17,9 +17,37 @@ export function RouteSync() {
     s.setHovered(null);
     s.setMenuOpen(false);
     // the helix clears it once the card has landed on the case study; coming home cancels it
-    if (pathname === "/") s.setTransitioning(null);
+    if (pathname === "/") {
+      s.setTransitioning(null);
+      window.scrollTo(0, 0);
+    }
     document.documentElement.dataset.home = pathname === "/" ? "true" : "false";
   }, [pathname]);
+
+  // Handle browser back/forward and bfcache restoration
+  useEffect(() => {
+    const sync = () => {
+      const p = window.location.pathname;
+      const s = useStore.getState();
+      s.setPathname(p);
+      s.setHovered(null);
+      s.setMenuOpen(false);
+      if (p === "/") {
+        s.setTransitioning(null);
+        document.documentElement.dataset.home = "true";
+        window.scrollTo(0, 0);
+      } else {
+        document.documentElement.dataset.home = "false";
+      }
+    };
+
+    window.addEventListener("popstate", sync);
+    window.addEventListener("pageshow", sync);
+    return () => {
+      window.removeEventListener("popstate", sync);
+      window.removeEventListener("pageshow", sync);
+    };
+  }, []);
 
   useEffect(() => {
     const v = search.get("view");

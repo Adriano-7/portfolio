@@ -201,7 +201,12 @@ export function Helix({
     const rt = runtime.current;
     if (rt.length !== n) return;
 
-    const onHome = s.pathname === "/";
+    const curPath = typeof window !== "undefined" ? window.location.pathname : s.pathname;
+    const onHome = curPath === "/";
+    if (onHome && (s.pathname !== "/" || s.transitioning !== null)) {
+      s.setPathname("/");
+      s.setTransitioning(null);
+    }
     const spiralVisible = onHome && s.view === "spiral" && !s.transitioning;
     const listMode = onHome && s.view === "list";
     const scroll = scrollRef.current!;
@@ -304,11 +309,12 @@ export function Helix({
         s.setTransitioning(null);
       }
       // hold the card until the cover has faded in over it, then drop it; also bail out on "back"
-      if ((tr.landedAt >= 0 && now - tr.landedAt > 0.35) || (tr.left && onHome)) {
+      if ((tr.landedAt >= 0 && now - tr.landedAt > 0.35) || onHome) {
         const c = rt[tr.index];
         c.alpha = 0;
         c.mat.setU("uBend", params.bend);
         c.mat.setU("uRadius", 0.045);
+        s.setTransitioning(null);
         transition.current = null;
         tr = null;
       }
@@ -380,6 +386,10 @@ export function Helix({
       c.mesh.raycast = c.alpha > 0.55 && pose.depth < 0.8 ? meshRaycast : noRaycast;
 
       c.mat.depthWrite = !flying && c.alpha > 0.95;
+      if (!flying) {
+        c.mat.setU("uBend", params.bend);
+        c.mat.setU("uRadius", 0.045);
+      }
       c.mat.setU("uDepth", flying ? 0 : pose.depth);
       // Side exposure is separate from depth: cards deform while rounding either edge.
       c.mat.setU("uSide", flying ? 0 : Math.sqrt(4 * pose.depth * (1 - pose.depth)));
