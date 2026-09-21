@@ -176,7 +176,7 @@ export default function AboutPage() {
         </section>
 
         <section className="mt-16">
-          <h2 className="mono mb-5 text-muted">Outside the lab</h2>
+          <h2 className="mono mb-5 text-muted">Community & Volunteering</h2>
           <AssociationShowcase associations={associations} />
         </section>
 
