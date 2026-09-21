@@ -67,78 +67,210 @@ function FocusView({
 }) {
   const reduced = useStore((s) => s.reducedMotion);
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
-  const [zoomLevel, setZoomLevel] = useState<number>(0); // 0 = Fit, 1 = 100%, 2 = 180%, 3 = 280%
-  const [fits, setFits] = useState(true);
+  const [scale, setScale] = useState<number>(1);
+  const [currentSrc, setCurrentSrc] = useState(figure.src);
+
+  // Sync state during render when slide changes
+  if (currentSrc !== figure.src) {
+    setCurrentSrc(figure.src);
+    setScale(1);
+    setNatural(null);
+  }
+
+  const [isWheeling, setIsWheeling] = useState(false);
+  const [containerSize, setContainerSize] = useState<{ w: number; h: number }>({ w: 1200, h: 800 });
 
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const drag = useRef<{ x: number; y: number; left: number; top: number; moved: number } | null>(null);
+  const lastPointerTypeRef = useRef<string>("mouse");
+  const touchStartRef = useRef<{ time: number; x: number; y: number } | null>(null);
+  const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null);
 
-  const isZoomed = zoomLevel > 0;
+  const isZoomed = scale > 1;
 
   // Keep latest callbacks in refs so the keydown listener doesn't re-bind on slide change
   const onPrevRef = useRef(onPrev);
   const onNextRef = useRef(onNext);
   const onCloseRef = useRef(onClose);
-  const zoomLevelRef = useRef(zoomLevel);
-  const applyZoomRef = useRef<((level: number, cx?: number, cy?: number) => void) | null>(null);
+  const scaleRef = useRef(scale);
+  const wheelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const applyScaleRef = useRef<((s: number, cx?: number, cy?: number) => void) | null>(null);
 
-  onPrevRef.current = onPrev;
-  onNextRef.current = onNext;
-  onCloseRef.current = onClose;
-  zoomLevelRef.current = zoomLevel;
+  // Measure container dimensions purely through effect to avoid ref reads during render
+  useEffect(() => {
+    const updateSize = () => {
+      if (scrollRef.current) {
+        setContainerSize({ w: scrollRef.current.clientWidth, h: scrollRef.current.clientHeight });
+      }
+    };
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
 
-  // Helper for sizing based on zoom step
-  const getTargetWidth = (level: number, naturalW: number) => {
-    if (level === 0) return undefined;
-    if (level === 1) return naturalW;
-    if (level === 2) return Math.round(naturalW * 1.8);
-    return Math.round(naturalW * 2.8);
+  const getBaseWidth = (nat: { w: number; h: number } | null, cSize: { w: number; h: number }) => {
+    if (!nat) return 800;
+    const pad = cSize.w < 768 ? 32 : 64;
+    const availW = Math.max(100, cSize.w - pad);
+    const availH = Math.max(100, cSize.h - pad);
+    const ratio = Math.min(availW / nat.w, availH / nat.h, 1);
+    return Math.round(nat.w * ratio);
   };
 
-  const applyZoom = (nextLevel: number, clientX?: number, clientY?: number) => {
+  const baseWidth = getBaseWidth(natural, containerSize);
+
+  const applyScale = (nextScale: number, clientX?: number, clientY?: number) => {
     const el = scrollRef.current;
+    const img = imgRef.current;
     if (!natural || !el) return;
 
-    if (nextLevel === 0) {
-      setZoomLevel(0);
+    const cW = el.clientWidth;
+    const cH = el.clientHeight;
+    const baseW = baseWidth;
+    const baseH = Math.round((baseWidth / natural.w) * natural.h);
+    const maxScale = Math.max(4, Math.round((natural.w / baseW) * 2.5));
+    const targetScale = Math.min(maxScale, Math.max(1, nextScale));
+
+    if (targetScale === 1) {
+      scaleRef.current = 1;
+      setScale(1);
+      if (img) {
+        img.style.width = "";
+        img.style.height = "";
+        img.style.transition = "";
+      }
       el.scrollLeft = 0;
       el.scrollTop = 0;
       return;
     }
 
-    const nextW = getTargetWidth(nextLevel, natural.w)!;
-    const nextH = (nextW / natural.w) * natural.h;
-
     let fx = 0.5;
     let fy = 0.5;
-
-    if (clientX != null && clientY != null && imgRef.current) {
-      const rect = imgRef.current.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        fx = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-        fy = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
-      }
+    if (clientX != null && clientY != null) {
+      const cRect = el.getBoundingClientRect();
+      const mouseX = clientX - cRect.left;
+      const mouseY = clientY - cRect.top;
+      const curW = Math.round(baseW * scaleRef.current);
+      const curH = Math.round(baseH * scaleRef.current);
+      const curOffX = curW + 48 >= cW ? 24 : Math.round((cW - curW) / 2);
+      const curOffY = curH + 48 >= cH ? 24 : Math.round((cH - curH) / 2);
+      fx = Math.max(0, Math.min(1, (el.scrollLeft + mouseX - curOffX) / curW));
+      fy = Math.max(0, Math.min(1, (el.scrollTop + mouseY - curOffY) / curH));
     }
 
-    setZoomLevel(nextLevel);
+    scaleRef.current = targetScale;
+    setScale(targetScale);
+
+    const newW = Math.round(baseW * targetScale);
+    const newH = Math.round(baseH * targetScale);
+    if (img) {
+      img.style.width = `${newW}px`;
+      img.style.height = `${newH}px`;
+    }
 
     requestAnimationFrame(() => {
       if (!scrollRef.current) return;
-      scrollRef.current.scrollLeft = nextW * fx - scrollRef.current.clientWidth / 2;
-      scrollRef.current.scrollTop = nextH * fy - scrollRef.current.clientHeight / 2;
+      const newOffX = newW + 48 >= cW ? 24 : Math.round((cW - newW) / 2);
+      const newOffY = newH + 48 >= cH ? 24 : Math.round((cH - newH) / 2);
+      scrollRef.current.scrollLeft = Math.round(newOffX + newW * fx - scrollRef.current.clientWidth / 2);
+      scrollRef.current.scrollTop = Math.round(newOffY + newH * fy - scrollRef.current.clientHeight / 2);
     });
   };
 
-  applyZoomRef.current = applyZoom;
-
-  // Reset zoom state and scroll offset whenever the active figure changes
+  // Safely update refs in effect to satisfy React 19 rules
   useEffect(() => {
-    setZoomLevel(0);
-    setNatural(null);
-    setFits(true);
+    scaleRef.current = scale;
+    onPrevRef.current = onPrev;
+    onNextRef.current = onNext;
+    onCloseRef.current = onClose;
+    applyScaleRef.current = applyScale;
+  });
+
+  // Native non-passive wheel event listener for fluid trackpad pinch zoom
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !natural) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+
+      const img = imgRef.current;
+      if (!img) return;
+
+      const cW = el.clientWidth;
+      const cH = el.clientHeight;
+      const baseW = baseWidth;
+      const baseH = Math.round((baseWidth / natural.w) * natural.h);
+      const maxScale = Math.max(4, Math.round((natural.w / baseW) * 2.5));
+
+      const prevScale = scaleRef.current;
+      // Gentle exponential factor to prevent overshoot
+      const factor = Math.exp(-e.deltaY * 0.006);
+      let nextScale = Math.min(maxScale, Math.max(1, prevScale * factor));
+      if (nextScale <= 1.03) nextScale = 1;
+
+      if (Math.abs(nextScale - prevScale) < 0.0005) return;
+
+      setIsWheeling(true);
+      if (wheelTimerRef.current) clearTimeout(wheelTimerRef.current);
+      wheelTimerRef.current = setTimeout(() => {
+        setIsWheeling(false);
+      }, 140);
+
+      const cRect = el.getBoundingClientRect();
+      const mouseX = e.clientX - cRect.left;
+      const mouseY = e.clientY - cRect.top;
+
+      // Current layout geometry based on prevScale
+      const curW = Math.round(baseW * prevScale);
+      const curH = Math.round(baseH * prevScale);
+      const curOffX = curW + 48 >= cW ? 24 : Math.round((cW - curW) / 2);
+      const curOffY = curH + 48 >= cH ? 24 : Math.round((cH - curH) / 2);
+
+      // Fraction on image directly under the pointer
+      const fx = Math.max(0, Math.min(1, (el.scrollLeft + mouseX - curOffX) / curW));
+      const fy = Math.max(0, Math.min(1, (el.scrollTop + mouseY - curOffY) / curH));
+
+      scaleRef.current = nextScale;
+      setScale(nextScale);
+
+      if (nextScale === 1) {
+        img.style.width = "";
+        img.style.height = "";
+        el.scrollLeft = 0;
+        el.scrollTop = 0;
+        return;
+      }
+
+      // Next layout geometry based on nextScale
+      const nextW = Math.round(baseW * nextScale);
+      const nextH = Math.round(baseH * nextScale);
+      const nextOffX = nextW + 48 >= cW ? 24 : Math.round((cW - nextW) / 2);
+      const nextOffY = nextH + 48 >= cH ? 24 : Math.round((cH - nextH) / 2);
+
+      // Synchronously update DOM style to prevent scrollLeft clamping before next frame
+      img.style.width = `${nextW}px`;
+      img.style.height = `${nextH}px`;
+      img.style.transition = "none";
+
+      // Set exact scroll offset so (fx, fy) remains pinned under (mouseX, mouseY)
+      el.scrollLeft = Math.round(nextOffX + nextW * fx - mouseX);
+      el.scrollTop = Math.round(nextOffY + nextH * fy - mouseY);
+    };
+
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", handleWheel);
+      if (wheelTimerRef.current) clearTimeout(wheelTimerRef.current);
+    };
+  }, [natural, baseWidth]);
+
+  // Reset scroll offset whenever the active figure changes
+  useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollLeft = 0;
       scrollRef.current.scrollTop = 0;
@@ -194,17 +326,17 @@ function FocusView({
       }
       if (e.key === "+" || e.key === "=") {
         e.preventDefault();
-        applyZoomRef.current?.(Math.min(zoomLevelRef.current + 1, 3));
+        applyScaleRef.current?.(scaleRef.current + 0.6);
         return;
       }
       if (e.key === "-" || e.key === "_") {
         e.preventDefault();
-        applyZoomRef.current?.(Math.max(zoomLevelRef.current - 1, 0));
+        applyScaleRef.current?.(scaleRef.current <= 1.6 ? 1 : scaleRef.current - 0.6);
         return;
       }
       if (e.key === "0") {
         e.preventDefault();
-        applyZoomRef.current?.(0);
+        applyScaleRef.current?.(1);
         return;
       }
       // Keep tabbing inside the overlay rather than behind it.
@@ -228,19 +360,9 @@ function FocusView({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // Zooming is only worth offering when the image had to be shrunk to fit.
-  useEffect(() => {
-    if (!natural) return;
-    const measure = () => {
-      const el = scrollRef.current;
-      if (el) setFits(natural.w <= el.clientWidth && natural.h <= el.clientHeight);
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [natural]);
-
   const onPointerDown = (e: React.PointerEvent) => {
+    lastPointerTypeRef.current = e.pointerType;
+    if (e.pointerType !== "mouse") return;
     const el = scrollRef.current;
     if (!isZoomed || !el) return;
     drag.current = { x: e.clientX, y: e.clientY, left: el.scrollLeft, top: el.scrollTop, moved: 0 };
@@ -248,6 +370,7 @@ function FocusView({
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
+    if (e.pointerType !== "mouse") return;
     const d = drag.current;
     const el = scrollRef.current;
     if (!d || !el) return;
@@ -259,48 +382,76 @@ function FocusView({
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
-    scrollRef.current?.releasePointerCapture?.(e.pointerId);
-    drag.current = null;
+    lastPointerTypeRef.current = e.pointerType;
+    if (e.pointerType === "mouse") {
+      scrollRef.current?.releasePointerCapture?.(e.pointerId);
+      drag.current = null;
+    }
+  };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    lastPointerTypeRef.current = "touch";
+    if (e.touches.length === 1) {
+      touchStartRef.current = {
+        time: Date.now(),
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+      };
+    } else {
+      touchStartRef.current = null;
+    }
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start || e.changedTouches.length === 0) return;
+
+    const changed = e.changedTouches[0];
+    const dx = Math.abs(changed.clientX - start.x);
+    const dy = Math.abs(changed.clientY - start.y);
+    const dt = Date.now() - start.time;
+
+    // Only recognize as a tap if finger moved very little and tap was quick
+    if (dx < 12 && dy < 12 && dt < 300) {
+      const lastTap = lastTapRef.current;
+      const now = Date.now();
+
+      if (lastTap && now - lastTap.time < 350) {
+        const tapDist = Math.abs(changed.clientX - lastTap.x) + Math.abs(changed.clientY - lastTap.y);
+        if (tapDist < 40) {
+          // Double tap detected!
+          lastTapRef.current = null;
+          if (isZoomed) {
+            applyScale(1);
+          } else {
+            applyScale(2.2, changed.clientX, changed.clientY);
+          }
+          return;
+        }
+      }
+
+      lastTapRef.current = { time: now, x: changed.clientX, y: changed.clientY };
+    }
   };
 
   const onImgClick = (e: React.MouseEvent<HTMLImageElement>) => {
+    // On mobile touch devices, single tap does not zoom; double tap is used instead
+    if (lastPointerTypeRef.current === "touch") return;
     if (drag.current && drag.current.moved > 4) return; // that was a pan, not a click
-    const next = (zoomLevel + 1) % 4; // cycles 0 -> 1 -> 2 -> 3 -> 0
-    applyZoom(next, e.clientX, e.clientY);
+    if (isZoomed) {
+      applyScale(Math.min(scale + 0.8, 4), e.clientX, e.clientY);
+    } else {
+      applyScale(2.2, e.clientX, e.clientY);
+    }
   };
 
   const onImgDoubleClick = (e: React.MouseEvent<HTMLImageElement>) => {
     e.preventDefault();
     if (isZoomed) {
-      applyZoom(0);
+      applyScale(1);
     } else {
-      applyZoom(2, e.clientX, e.clientY);
-    }
-  };
-
-  const onWheel = (e: React.WheelEvent) => {
-    const el = scrollRef.current;
-    if (!el) return;
-
-    // Trackpad pinch or Ctrl + mouse wheel zooms in/out
-    if (e.ctrlKey) {
-      e.preventDefault();
-      if (e.deltaY < 0) {
-        applyZoom(Math.min(zoomLevel + 1, 3), e.clientX, e.clientY);
-      } else if (e.deltaY > 0) {
-        applyZoom(Math.max(zoomLevel - 1, 0), e.clientX, e.clientY);
-      }
-      return;
-    }
-
-    if (!isZoomed) return;
-
-    const canScrollY = el.scrollHeight > el.clientHeight;
-    const canScrollX = el.scrollWidth > el.clientWidth;
-    // If the image only overflows horizontally (e.g. wide panoramic/landscape photo),
-    // map standard vertical wheel delta to horizontal scroll so mouse wheel works seamlessly.
-    if (!canScrollY && canScrollX && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-      el.scrollLeft += e.deltaY;
+      applyScale(2.2, e.clientX, e.clientY);
     }
   };
 
@@ -315,26 +466,18 @@ function FocusView({
     >
       {/* Header bar */}
       <div className="flex shrink-0 items-center justify-between gap-4 px-5 py-4 md:px-8">
-        <p className="mono text-muted-2">
+        <div>
           {totalCount != null && currentIndex != null && (
-            <>
+            <p className="mono text-muted-2">
               <span className="text-fg/90">{currentIndex + 1}</span> / {totalCount}
-              <span className="mx-2 text-white/20">·</span>
-            </>
+            </p>
           )}
-          {zoomLevel === 0
-            ? "click to zoom"
-            : zoomLevel === 1
-            ? "100% · drag to pan · click to zoom in"
-            : zoomLevel === 2
-            ? "180% · drag to pan · click to zoom in"
-            : "280% · drag to pan · click to fit"}
-        </p>
+        </div>
         <div className="flex items-center gap-2">
           {isZoomed && (
             <button
               type="button"
-              onClick={() => applyZoom(0)}
+              onClick={() => applyScale(1)}
               className="mono rounded-full border border-white/15 px-2.5 py-1 text-xs text-muted transition-colors hover:border-white/35 hover:text-fg"
             >
               reset
@@ -342,8 +485,8 @@ function FocusView({
           )}
           <button
             type="button"
-            onClick={() => applyZoom(Math.max(zoomLevel - 1, 0))}
-            disabled={zoomLevel === 0}
+            onClick={() => applyScale(scale <= 1.6 ? 1 : scale - 0.6)}
+            disabled={scale <= 1}
             aria-label="Zoom out (-)"
             className="mono flex h-7 w-7 items-center justify-center rounded-full border border-white/15 text-muted transition-colors hover:border-white/35 hover:text-fg disabled:opacity-30 disabled:pointer-events-none"
           >
@@ -351,8 +494,8 @@ function FocusView({
           </button>
           <button
             type="button"
-            onClick={() => applyZoom(Math.min(zoomLevel + 1, 3))}
-            disabled={zoomLevel >= 3}
+            onClick={() => applyScale(scale + 0.6)}
+            disabled={scale >= 4}
             aria-label="Zoom in (+)"
             className="mono flex h-7 w-7 items-center justify-center rounded-full border border-white/15 text-muted transition-colors hover:border-white/35 hover:text-fg disabled:opacity-30 disabled:pointer-events-none"
           >
@@ -431,7 +574,6 @@ function FocusView({
         <div
           ref={scrollRef}
           data-lenis-prevent
-          onWheel={onWheel}
           onClick={(e) => {
             if (e.target === e.currentTarget) onClose();
           }}
@@ -439,32 +581,74 @@ function FocusView({
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
-          className={`h-full w-full flex items-center justify-center px-4 md:px-8 ${
-            isZoomed ? "overflow-auto cursor-grab active:cursor-grabbing" : "overflow-hidden"
+          className={`h-full w-full ${
+            isZoomed
+              ? "overflow-auto cursor-grab active:cursor-grabbing touch-pan-x touch-pan-y"
+              : "overflow-hidden flex items-center justify-center px-4 md:px-8"
           }`}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            ref={imgRef}
-            key={figure.src}
-            src={figure.src}
-            alt={figure.alt}
-            onLoad={(e) => setNatural({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
-            onClick={onImgClick}
-            onDoubleClick={onImgDoubleClick}
-            draggable={false}
-            style={{
-              cursor: isZoomed ? (zoomLevel === 3 ? "zoom-out" : "zoom-in") : "zoom-in",
-              width: isZoomed && natural ? getTargetWidth(zoomLevel, natural.w) : undefined,
-              maxWidth: isZoomed ? "none" : natural ? `min(100%, ${natural.w}px)` : "100%",
-              maxHeight: isZoomed ? "none" : natural ? `min(100%, ${natural.h}px)` : "100%",
-            }}
-            className={`m-auto block h-auto rounded-lg select-none transition-all duration-150 ease-out ${
-              figure.src.includes("/associations/") ? "bg-transparent" : "bg-white"
-            } ${reduced ? "" : "animate-[fadeIn_0.15s_ease-out]"} ${
-              isZoomed ? "" : "max-h-full max-w-full object-contain"
-            }`}
-          />
+          {isZoomed ? (
+            <div
+              style={{
+                minWidth: "100%",
+                minHeight: "100%",
+                width: "max-content",
+                height: "max-content",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "1.5rem",
+              }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) onClose();
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                ref={imgRef}
+                key={figure.src}
+                src={figure.src}
+                alt={figure.alt}
+                onLoad={(e) => setNatural({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+                onClick={onImgClick}
+                onDoubleClick={onImgDoubleClick}
+                onTouchStart={onTouchStart}
+                onTouchEnd={onTouchEnd}
+                draggable={false}
+                style={{
+                  cursor: scale > 1 ? "zoom-out" : "zoom-in",
+                  width: natural ? Math.round(baseWidth * scale) : undefined,
+                }}
+                className={`block h-auto rounded-lg select-none ${
+                  isWheeling ? "transition-none" : "transition-all duration-150 ease-out"
+                } ${
+                  figure.src.includes("/associations/") ? "bg-transparent" : "bg-white"
+                }`}
+              />
+            </div>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              ref={imgRef}
+              key={figure.src}
+              src={figure.src}
+              alt={figure.alt}
+              onLoad={(e) => setNatural({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+              onClick={onImgClick}
+              onDoubleClick={onImgDoubleClick}
+              onTouchStart={onTouchStart}
+              onTouchEnd={onTouchEnd}
+              draggable={false}
+              style={{
+                cursor: "zoom-in",
+                maxWidth: natural ? `min(100%, ${natural.w}px)` : "100%",
+                maxHeight: natural ? `min(100%, ${natural.h}px)` : "100%",
+              }}
+              className={`m-auto block h-auto rounded-lg select-none transition-all duration-150 ease-out ${
+                figure.src.includes("/associations/") ? "bg-transparent" : "bg-white"
+              } ${reduced ? "" : "animate-[fadeIn_0.15s_ease-out]"} max-h-full max-w-full object-contain`}
+            />
+          )}
         </div>
       </div>
 
