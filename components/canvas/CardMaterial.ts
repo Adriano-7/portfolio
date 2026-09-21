@@ -21,10 +21,11 @@ const vertexShader = /* glsl */ `
     p.z += arch * curl;
     p.y += arch * sin(uv.y * 3.14159265) * curl * 0.12;
     p.x += sin(uv.y * 3.14159265) * curl * rear * 0.08;
-    // Cards skew as they turn around the sides, not only when they reach the rear.
+    // A slight irregularity keeps the surface organic without making cards
+    // become parallelograms before they reach the cylinder's side.
     float lean = sin(uSeed * 1.73 + 0.9);
-    p.x += (uv.y - 0.5) * shape * lean * 0.32;
-    p.y += (uv.x - 0.5) * shape * lean * 0.2;
+    p.x += (uv.y - 0.5) * shape * lean * 0.12;
+    p.y += (uv.x - 0.5) * shape * lean * 0.08;
     // shear while the helix is moving
     p.y += (uv.x - 0.5) * uScrollSpeed;
     p.x += sin(uv.y * 3.14159265) * uScrollSpeed * 0.25;
@@ -82,18 +83,24 @@ const fragmentShader = /* glsl */ `
     vec2 puv = (cell + 0.5) / grid;
     vec2 suv = r > 0.999 ? distortedUv : puv;
 
-    float blur = rear * 0.014;
-    vec4 tex = texture2D(uMap, suv, rear * 4.0);
-    vec4 ahead = texture2D(uMap, clamp(suv + flow * blur, 0.001, 0.999), rear * 4.0);
-    vec4 behind = texture2D(uMap, clamp(suv - flow * blur, 0.001, 0.999), rear * 4.0);
-    tex = mix(tex, (ahead + tex * 2.0 + behind) * 0.25, rear);
+    // Keep the image structure intact, then pull it gently along a direction.
+    // A large mip bias turns rear cards into a uniform frosted blur instead of
+    // the colourful, flow-like distortion used by the reference.
+    float blur = rear * 0.012;
+    float mipBias = rear * 1.15;
+    vec4 tex = texture2D(uMap, suv, mipBias);
+    vec4 ahead = texture2D(uMap, clamp(suv + flow * blur, 0.001, 0.999), mipBias);
+    vec4 behind = texture2D(uMap, clamp(suv - flow * blur, 0.001, 0.999), mipBias);
+    tex = mix(tex, (ahead + tex * 2.0 + behind) * 0.25, rear * 0.82);
 
     float n = hash(cell + uSeed);
     float showNoise = step(r, n) * (1.0 - r);
     vec3 noiseCol = mix(uFillColor, vec3(n), 0.55) * (0.35 + 0.65 * n);
     vec3 col = mix(tex.rgb, noiseCol, showNoise);
 
-    col *= 1.0 - 0.62 * uDepth;
+    // Let rear cards soften into the scene without losing their colour mass.
+    // A severe darkening makes the helix read as disconnected foreground cards.
+    col *= 1.0 - 0.34 * uDepth;
     col += 0.04 * uZoom;
 
     vec2 p = (vUv - 0.5) * uPlaneSizes;
@@ -147,8 +154,14 @@ export class CardMaterial extends THREE.ShaderMaterial {
       vertexShader,
       fragmentShader,
       transparent: true,
-      depthWrite: false,
+      // Cards are mostly opaque. Let their pixels establish depth so cards
+      // behind cannot blend through during an overlap.
+      depthWrite: true,
+      alphaTest: 0.01,
       side: THREE.DoubleSide,
+      // A transparent double-sided plane otherwise renders once per face,
+      // which produces a visible blend change while it turns edge-on.
+      forceSinglePass: true,
     });
   }
 

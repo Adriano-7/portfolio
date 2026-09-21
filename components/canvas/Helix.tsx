@@ -372,7 +372,7 @@ export function Helix({
 
   // keep the camera where the layout expects it
   useEffect(() => {
-    camera.position.set(0, 0, mobile ? 8.2 : 8.4);
+    camera.position.set(0, 0, mobile ? 8.2 : 11);
     camera.lookAt(0, 0, 0);
   }, [camera, mobile]);
 

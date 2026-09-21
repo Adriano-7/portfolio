@@ -31,9 +31,10 @@ export function SceneRoot({ projects }: { projects: ProjectMeta[] }) {
   return (
     <div className="fixed inset-0 z-0" style={{ touchAction: "none" }}>
       <Canvas
+        key={mobile ? "mobile-canvas" : "desktop-canvas"}
         dpr={[1, 1.5]}
         gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
-        camera={{ position: [0, 0, 8.4], fov: 35, near: 0.1, far: 50 }}
+        camera={{ position: [0, 0, mobile ? 8.2 : 11], fov: mobile ? 35 : 24, near: 0.1, far: 50 }}
         onPointerMissed={() => useStore.getState().setHovered(null)}
       >
         <Suspense fallback={null}>
