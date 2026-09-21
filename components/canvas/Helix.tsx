@@ -90,7 +90,7 @@ export function Helix({
   const shear = useRef(0);
 
   const geometry = useMemo(
-    () => new THREE.PlaneGeometry(params.cardW, params.cardH, 24, 24),
+    () => new THREE.PlaneGeometry(params.cardW, params.cardH, 32, 24),
     [params.cardW, params.cardH],
   );
 
@@ -379,6 +379,7 @@ export function Helix({
       // only solid cards may be hovered/clicked
       c.mesh.raycast = c.alpha > 0.55 && pose.depth < 0.8 ? meshRaycast : noRaycast;
 
+      c.mat.depthWrite = !flying && c.alpha > 0.95;
       c.mat.setU("uDepth", flying ? 0 : pose.depth);
       // Side exposure is separate from depth: cards deform while rounding either edge.
       c.mat.setU("uSide", flying ? 0 : Math.sqrt(4 * pose.depth * (1 - pose.depth)));

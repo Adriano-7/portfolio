@@ -15,16 +15,16 @@ const vertexShader = /* glsl */ `
     float arch = sin(uv.x * 3.14159265);
     float rear = smoothstep(0.12, 0.95, uDepth);
     float side = smoothstep(0.12, 0.85, uSide);
-    // Keep the side silhouette planar to prevent edge-on self-overlap and sawtooth artifacts; reserve flex and skew for the rear.
-    float curl = uBend * (1.0 + rear * 0.8) * (1.0 - side);
-    float shape = rear * (1.0 - side * 0.5);
+    // Maintain a smooth, elegant curvature that gently softens at grazing angles
+    float curl = uBend * (1.0 + rear * 0.6 - side * 0.45);
+    float shape = rear * (1.0 - side * 0.4);
     p.z += arch * curl;
-    p.y += arch * sin(uv.y * 3.14159265) * curl * 0.12;
-    p.x += sin(uv.y * 3.14159265) * curl * rear * 0.08;
-    // Cards skew as they turn around to the rear
+    p.y += arch * sin(uv.y * 3.14159265) * curl * 0.08;
+    p.x += sin(uv.y * 3.14159265) * curl * rear * 0.05;
+    // Cards skew gently as they reach the rear
     float lean = sin(uSeed * 1.73 + 0.9);
-    p.x += (uv.y - 0.5) * shape * lean * 0.32;
-    p.y += (uv.x - 0.5) * shape * lean * 0.2;
+    p.x += (uv.y - 0.5) * shape * lean * 0.18;
+    p.y += (uv.x - 0.5) * shape * lean * 0.12;
     // shear while the helix is moving
     p.y += (uv.x - 0.5) * uScrollSpeed;
     p.x += sin(uv.y * 3.14159265) * uScrollSpeed * 0.25;
