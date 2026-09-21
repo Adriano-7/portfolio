@@ -1,0 +1,167 @@
+---
+slug: data-complexity
+title: Data Complexity & Meta-Learning on Wine
+tagline: Profiling classification hardness across overlap, linearity, neighborhood, and network topologies to explain model behavior.
+year: 2024
+kind: Course project · AI & Society
+tags: [Meta-learning, Data complexity, Instance hardness, Classification]
+stack: [scikit-learn, problexity, pyhard, pymfe, pandas, Matplotlib]
+accent: "#9E1B32"
+order: 11
+grade: 18/20
+repo: https://github.com/Adriano-7/fcup-ias-02-data-complexity
+reports:
+  - label: Read the report
+    file: report.pdf
+credits: Adriano Machado · Artificial Intelligence and Society, FEUP/FCUP
+---
+
+<Lead>
+Machine learning models are typically evaluated through empirical trial and error, treating datasets as black boxes until test scores arrive. Data complexity profiling inverts this workflow: by extracting geometric, topological, and neighborhood meta-features before training, we can quantify the intrinsic difficulty of a problem and explain why specific inductive biases succeed or fail. Profiling the classic Wine classification benchmark across six complexity families predicted that a linear Support Vector Machine would dominate, that K-Nearest Neighbors would perform strongly despite network sparsity, and that Decision Trees would suffer from variance distributed across chemical features.
+</Lead>
+
+## The dataset & experimental framework
+
+The study evaluates the 13-feature **Wine recognition dataset** from Scikit-Learn (178 samples derived from chemical analysis of wines grown in the same region in Italy across three distinct cultivars).
+
+- **Class distribution:** 59 samples for Class 0 (33.1%), 71 samples for Class 1 (39.9%), and 48 samples for Class 2 (27.0%).
+- **Features:** 13 continuous chemical measurements: *alcohol, malic acid, ash, alcalinity of ash, magnesium, total phenols, flavanoids, nonflavanoid phenols, proanthocyanins, color intensity, hue, OD280/OD315 of diluted wines*, and *proline*.
+- **Standardization:** All features were scaled to zero mean and unit variance using `StandardScaler`. This preprocessing is essential for scale-dependent complexity metrics—particularly Fisher's discriminant ratios, neighborhood radii, and distance-based graph topologies.
+
+Following the meta-learning taxonomies formulated by Garcia et al. (2018) and Lorena et al. (2019), we quantified classification hardness across six foundational metric families using `problexity`, assessed instance-level hardness via `pyhard`, and verified the resulting predictions empirically using 5-fold cross-validated grid sweeps across three distinct learning paradigms: Support Vector Machines (SVM), K-Nearest Neighbors (KNN), and Decision Trees (DT).
+
+## The six families of data complexity
+
+The 20+ complexity metrics extracted via `problexity` map the geometric structure of the 13-dimensional manifold. In the radar profile below, lower scores generally indicate simpler, less ambiguous classification tasks:
+
+<Figure src="/projects/data-complexity/complexity-measures.webp" alt="Radar plot of data complexity measures across six families: feature overlap, linearity, neighborhood, network, dimensionality, and class balance" caption="Data complexity radar profile of the standardized Wine dataset across six metric families (Garcia et al., 2018; Lorena et al., 2019). Near-zero linearity and feature overlap metrics confirm strong separability, while network density hints at internal cluster dispersion." />
+
+### 1. Feature overlapping measures (red)
+
+Feature overlap metrics quantify the discriminative capacity of individual features and joint feature subspaces:
+
+- **F1 (0.15) — Maximum Fisher's Discriminant Ratio:** Computes the ratio of inter-class variance to intra-class variance for each individual feature. A score of 0.15 confirms that at least one single chemical attribute provides substantial separation between cultivars on its own.
+- **F1v (0.03) — Directional-vector Maximum Fisher's Ratio:** Searches for an optimal projection vector that separates classes. A low value of 0.03 indicates that projecting samples along a single directional vector achieves near-complete separation.
+- **F2 (0.00) — Volume of Overlapping Region:** Measures the normalized volume of overlap between class bounding boxes. A score of 0.00 reveals that the minimum and maximum ranges of at least one feature are completely disjoint across classes.
+- **F3 (0.15) — Maximum Individual Feature Efficiency:** Fraction of samples lying within the overlapping region of the most discriminative feature. Only 15% of samples show any ambiguity when viewed along the best single dimension.
+- **F4 (0.00) — Collective Feature Efficiency:** Measures the remaining fraction of overlapping samples after iteratively removing discriminative features. A value of 0.00 confirms that the 13 features collectively eliminate all overlapping instances without leaving ambiguous subspaces.
+
+### 2. Linearity measures (orange)
+
+Linearity metrics quantify whether the problem can be separated by a planar decision boundary:
+
+- **L1 (0.00) — Sum of Error Distance by Linear Programming:** Measures the distance of misclassified instances to a linear separating hyperplane. Exactly 0.00 denotes zero margin violations.
+- **L2 (0.00) — Error Rate of a Linear Classifier:** Test error of a linear formulation. 0.00 confirms zero misclassifications under a linear decision surface.
+- **L3 (0.00) — Non-Linearity of a Linear Classifier:** Measures classification error on synthetic points created by linearly interpolating pairs of examples from the same class. A score of 0.00 demonstrates that the convex hulls of individual classes do not intersect or form twisted manifolds.
+
+### 3. Neighborhood & boundary measures (yellow)
+
+Neighborhood metrics evaluate local neighborhood purity and decision boundary smoothness:
+
+- **N1 (0.02) — Fraction of Borderline Points:** Constructs a Minimum Spanning Tree (MST) connecting all instances and computes the proportion of edges linking samples from different classes. Only 2% of instances lie on decision boundaries, proving that boundary interfaces are exceptionally narrow and clean.
+- **N2 (0.40) — Ratio of Intra/Extra Class Nearest Neighbor Distance:** Ratio of the distance to the nearest neighbor of the same class versus the nearest neighbor of an opposing class. A score of 0.40 confirms that same-class instances are clustered significantly closer than opposing-class samples.
+- **N3 (0.02) — Error Rate of Nearest Neighbor Classifier:** A 1-NN leave-one-out formulation achieves a 2% error rate, corroborating local neighborhood purity.
+- **N4 (0.00) — Non-Linearity of Nearest Neighbor:** Evaluates 1-NN error on linearly interpolated convex combinations. 0.00 confirms the absence of complex non-linear boundary pockets.
+- **T1 (0.29) — Fraction of Hyperspheres Covering Data:** The fraction of spheres needed to cover the instances without capturing opposing classes. A moderate value of 0.29 indicates modest geometric dispersion.
+- **LSC (0.69) — Local Set Average Cardinality:** The average neighborhood radius containing purely homogenous class instances before encountering an adversary. A high value of 0.69 confirms dense, cohesive intra-class groupings.
+
+### 4. Network topology measures (green)
+
+By translating instances into an ε-graph, network metrics capture structural topology:
+
+- **Density (0.91) — Average Density of the Network:** In `problexity`'s normalized formulation, this high score reflects sparse connectivity between instances, showing that while clusters are dense internally, some sub-clusters of the same cultivar remain physically separated across the input space.
+- **ClsCoef (0.55) — Clustering Coefficient:** Moderate local clustering tendency across graph cliques.
+- **Hubs (0.79) — Hub Score:** The presence of highly connected, central representative instances anchoring each class cluster.
+
+### 5. Dimensionality & class balance (teal & blue)
+
+- **T2 (0.11) & T3 (0.08) — Dimensionality per Point:** Reflects a high sample-to-feature ratio (13 / 178 ≈ 0.073), ensuring non-sparse feature coverage without curse-of-dimensionality degradation.
+- **T4 (0.74) — Ratio of PCA Dimensions to Original Dimensions:** Measures the proportion of principal components required to explain 95% of total dataset variance. A high score of 0.74 indicates that variance is broadly distributed across almost all 13 chemical features, rather than collapsing into two or three dominant orthogonal axes.
+- **C1 (0.01) & C2 (0.04) — Class Balance:** Near-zero entropy of class proportions (C1) and imbalance ratio (C2) demonstrate that class distributions are virtually balanced, eliminating prior-shift vulnerabilities.
+
+<Table
+  head={["Metric Family", "Key Measures", "Dataset Values", "Theoretical Implication"]}
+  rows={[
+    ["Feature Overlap", "F1, F1v, F2, F3, F4", "0.15, 0.03, 0.00, 0.15, 0.00", "Zero residual overlap (F4=0); disjoint bounding boxes (F2=0)"],
+    ["Linearity", "L1, L2, L3", "0.00, 0.00, 0.00", "Classes are linearly separable without margin violations"],
+    ["Neighborhood", "N1, N2, N3, N4, LSC", "0.02, 0.40, 0.02, 0.00, 0.69", "Ultra-narrow boundary (N1=0.02); dense local neighborhoods (LSC=0.69)"],
+    ["Network", "Density, ClsCoef, Hubs", "0.91, 0.55, 0.79", "Sparse global connectivity between distant intra-class nodes"],
+    ["Dimensionality", "T2, T3, T4", "0.11, 0.08, 0.74", "Manageable sample density, but variance is spread across many features (T4=0.74)"],
+    ["Class Balance", "C1, C2", "0.01, 0.04", "Balanced representation; no class-weight compensation required"],
+  ]}
+/>
+
+## Instance hardness: PCA & k-Disagreeing Neighbors
+
+To inspect where classification difficulty concentrates at the sample level, we mapped the dataset using Principal Component Analysis and computed instance hardness via `pyhard`.
+
+Each instance was assigned a **kDN (k-Disagreeing Neighbors)** score (k = 5), which measures the fraction of an instance's 5 nearest neighbors that belong to a different class:
+
+`kDN(x) = (count of 5-NN with y_j ≠ y_x) / 5`
+
+Instances with `kDN = 0` reside comfortably inside homogeneous clusters, whereas instances with high `kDN` sit directly on ambiguous class frontiers.
+
+<Figure src="/projects/data-complexity/pca-hardness.webp" alt="Principal Component Analysis scatter plot colored by k-Disagreeing Neighbors (kDN) instance hardness, with markers distinguishing classes 0, 1, and 2" caption="PCA projection (z₁ vs z₂) colored by kDN hardness (cool blue = 0.0, warm red = high hardness). The vast majority of samples are effortlessly separable. Hard instances concentrate exclusively along the frontier interface where Class 1 borders Class 0 and Class 2." />
+
+The hardness embedding surfaces two findings:
+
+1. **Massive homogeneous interior:** The vast majority of samples across all three cultivars display `kDN = 0.0` (deep blue), sitting deep inside pure class envelopes.
+2. **Boundary localization:** The few hard samples (warm red, `kDN > 0.4`) do not scatter randomly across the space as noise or outliers. Instead, they concentrate strictly along the contact boundaries between Class 1 (triangles) and its neighboring clusters—Class 0 (circles) in the upper-left quadrant and Class 2 (squares) in the rightward quadrant.
+
+## Model validation: testing theoretical predictions
+
+To evaluate whether the theoretical complexity measures accurately foretell classifier performance, we split the standardized dataset into a 70% training set (124 samples) and a 30% holdout test set (54 samples, stratified with 19 Class 0, 21 Class 1, and 14 Class 2).
+
+Each algorithm underwent 5-fold cross-validated grid search (`GridSearchCV`) across hyperparameter configurations:
+
+- **Decision Tree:** Swept `max_depth ∈ [3, 5, 7, 10]`, `min_samples_split ∈ [2, 5, 10]`, and `min_samples_leaf ∈ [1, 2, 4]`. Optimal parameters: `{'max_depth': 3, 'min_samples_leaf': 2, 'min_samples_split': 10}`.
+- **K-Nearest Neighbors:** Swept `n_neighbors ∈ [3, 5, 7, 9]`, distance `metric ∈ ['euclidean', 'manhattan']`, and `weights ∈ ['uniform', 'distance']`. Optimal parameters: `{'metric': 'manhattan', 'n_neighbors': 5, 'weights': 'uniform'}`.
+- **Support Vector Machine:** Swept `kernel ∈ ['linear', 'rbf']`, penalty `C ∈ [0.1, 1, 10]`, and `gamma ∈ ['scale', 'auto', 0.1]`. Optimal parameters: `{'C': 1, 'gamma': 'scale', 'kernel': 'linear'}`.
+
+Holdout test performance aligned with the complexity profile:
+
+<Table
+  head={["Classifier", "Best Hyperparameters", "Accuracy", "Precision", "Recall", "F1-Score"]}
+  rows={[
+    ["Support Vector Machine", "C=1, kernel='linear', gamma='scale'", "0.9815", "0.9827", "0.9815", "0.9816"],
+    ["K-Nearest Neighbors", "n_neighbors=5, metric='manhattan', uniform", "0.9630", "0.9651", "0.9630", "0.9626"],
+    ["Decision Tree", "max_depth=3, min_samples_leaf=2, split=10", "0.9444", "0.9514", "0.9444", "0.9449"],
+  ]}
+/>
+
+## Where the errors are & why inductive bias matters
+
+Examining the exact confusion matrices and error distributions reveals how the geometric findings govern empirical failures:
+
+<Table
+  head={["Classifier", "Total Errors", "Class 0 Errors", "Class 1 Errors", "Class 2 Errors", "Primary Failure Mechanism"]}
+  rows={[
+    ["Support Vector Machine", "1 / 54", "0", "1 (called Class 2)", "0", "Optimal hyperplane cleanly separates linearly separable space (L1=0)"],
+    ["K-Nearest Neighbors", "2 / 54", "0", "2 (1 called Class 0, 1 called Class 2)", "0", "Dense local clusters (LSC=0.69) countered by network sparsity (0.91)"],
+    ["Decision Tree", "3 / 54", "2 (called Class 1)", "0", "1 (called Class 1)", "Orthogonal axis-aligned splits struggle with multi-feature variance (T4=0.74)"],
+  ]}
+/>
+
+### Support Vector Machine (1 error): maximum margin meets linear separability
+
+The complexity metrics predicted SVM as the clear front-runner. With L1 = 0.00, L2 = 0.00, and L3 = 0.00, the 13-dimensional manifold permits clean linear separation with zero margin violations. GridSearchCV independently converged on `kernel: 'linear'` at C = 1.
+
+Because SVM optimizes the global maximum-margin hyperplane, it places the decision surface equidistant between supporting vectors, remaining resilient against local point fluctuations. Across the entire 54-sample test set, the SVM made only a single mistake: one Class 1 sample located precisely on the boundary frontier was assigned to Class 2.
+
+### K-Nearest Neighbors (2 errors): strong clusters vs network sparsity
+
+KNN benefited directly from the low borderline fraction (N1 = 0.02) and strong local set cardinality (LSC = 0.69). When local neighborhoods are dense and homogenous, nearest neighbors vote reliably.
+
+However, KNN's performance was slightly degraded by network sparsity (density measure of 0.91). In regions where intra-class samples are geometrically distant from each other, local distance metrics become susceptible to boundary encroachment. KNN misclassified two Class 1 samples—one into Class 0 and one into Class 2—precisely matching the red high-kDN frontier identified in the PCA hardness embedding. Switching from Euclidean to Manhattan metric helped mitigate dimensional stretching, but could not match the global margin placement of SVM.
+
+### Decision Trees (3 errors): the orthogonal partitioning penalty
+
+Decision Trees finished third at 94.4% accuracy. At first glance, low feature overlap (F1–F4 ≈ 0.00) suggests that powerful threshold splits exist. However, the high T4 dimensionality ratio (0.74) proved decisive: total dataset variance is spread across almost all 13 chemical features rather than being captured by a few orthogonal dimensions.
+
+Because standard decision trees can only create axis-aligned, orthogonal decision boundaries, approximating an oblique separating hyperplane requires a staircase of nested conditional splits. On a compact dataset of 178 instances, deep staircases risk immediate overfitting. Even though regularized pruning (`max_depth: 3`, `min_samples_leaf: 2`, `min_samples_split: 10`) constrained tree depth, the model misclassified three boundary instances (two Class 0 wines and one Class 2 wine, all mistakenly assigned to the central Class 1 corridor).
+
+## Key takeaways
+
+1. **Complexity profiling anticipates inductive fit:** Meta-learning metrics offer a principled basis for model selection prior to hyperparameter tuning. Zero linearity error (L1–L3 = 0) and zero feature overlap (F2 = 0, F4 = 0) accurately flagged linear hyperplanes as optimal.
+2. **High T4 signals orthogonal split penalties:** When variance is distributed evenly across multiple features (T4 = 0.74), axis-aligned decision trees struggle to emulate continuous hyperplanes without paying an accuracy penalty.
+3. **Hardness is localized, not uniform:** Calculating k-Disagreeing Neighbors (kDN) confirms that classification difficulty in the Wine dataset does not stem from diffuse background noise, but from a narrow, well-defined boundary interface between Class 1 and its neighboring cultivars.
