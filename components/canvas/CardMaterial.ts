@@ -3,13 +3,19 @@ import * as THREE from "three";
 const vertexShader = /* glsl */ `
   uniform float uBend;
   uniform float uScrollSpeed;
+  uniform float uDepth;
   varying vec2 vUv;
 
   void main() {
     vUv = uv;
     vec3 p = position;
-    // gentle cylinder curvature
-    p.z += sin(uv.x * 3.14159265) * uBend;
+    // Rear cards catch more of the "wind" so the cylinder has a soft, flexible surface.
+    float arch = sin(uv.x * 3.14159265);
+    float rear = smoothstep(0.12, 0.95, uDepth);
+    float curl = uBend * (1.0 + rear * 0.85);
+    p.z += arch * curl;
+    p.y += arch * sin(uv.y * 3.14159265) * curl * 0.18;
+    p.x += sin(uv.y * 3.14159265) * curl * rear * 0.12;
     // shear while the helix is moving
     p.y += (uv.x - 0.5) * uScrollSpeed;
     p.x += sin(uv.y * 3.14159265) * uScrollSpeed * 0.25;
@@ -50,15 +56,28 @@ const fragmentShader = /* glsl */ `
     vec2 uv = (vUv - 0.5) * ratio + 0.5;
     uv = (uv - 0.5) / (1.0 + 0.07 * uZoom) + 0.5;
 
+    // Instead of simply lowering texture resolution, distant cards distort and smear
+    // along a seeded flow field. The lead card (uDepth = 0) remains completely crisp.
+    float rear = smoothstep(0.1, 0.95, uDepth);
+    vec2 fromCenter = uv - 0.5;
+    float ripple = sin(uv.y * 15.0 + uSeed * 1.7) * sin(uv.x * 11.0 - uSeed * 0.8);
+    vec2 swirl = vec2(-fromCenter.y, fromCenter.x) * ripple * rear * 0.035;
+    vec2 flow = normalize(vec2(cos(uSeed * 1.91), sin(uSeed * 1.37)));
+    vec2 distortedUv = clamp(uv + swirl, 0.001, 0.999);
+
     // "denoise" reveal: coarse noisy blocks resolve into the image
     float r = clamp(uReveal, 0.0, 1.0);
     float blocks = mix(9.0, 720.0, r * r);
     vec2 grid = vec2(blocks, blocks / planeAspect);
-    vec2 cell = floor(uv * grid);
+    vec2 cell = floor(distortedUv * grid);
     vec2 puv = (cell + 0.5) / grid;
-    vec2 suv = r > 0.999 ? uv : puv;
+    vec2 suv = r > 0.999 ? distortedUv : puv;
 
-    vec4 tex = texture2D(uMap, suv, uDepth * 3.5);
+    float blur = rear * 0.014;
+    vec4 tex = texture2D(uMap, suv, rear * 4.0);
+    vec4 ahead = texture2D(uMap, clamp(suv + flow * blur, 0.001, 0.999), rear * 4.0);
+    vec4 behind = texture2D(uMap, clamp(suv - flow * blur, 0.001, 0.999), rear * 4.0);
+    tex = mix(tex, (ahead + tex * 2.0 + behind) * 0.25, rear);
 
     float n = hash(cell + uSeed);
     float showNoise = step(r, n) * (1.0 - r);
