@@ -51,8 +51,8 @@ export type Pose = {
 };
 
 export function wrapT(i: number, progress: number, n: number) {
-  const t = (((i + progress) % n) + n) % n;
-  return t - n / 2;
+  const d = (((i - progress) % n) + n) % n;
+  return d >= n / 2 ? d - n : d;
 }
 
 function smoothstep(a: number, b: number, x: number) {

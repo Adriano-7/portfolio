@@ -78,8 +78,8 @@ export function Helix({
   const scrollRef = useRef<VirtualScroll | null>(null);
   if (scrollRef.current == null) {
     const sc = new VirtualScroll();
-    // start with the first project at the front (t = 0 when i + progress = n / 2)
-    sc.target = sc.current = -n / 2;
+    // start with the first project at the front (t = 0 when progress = 0)
+    sc.target = sc.current = 0;
     scrollRef.current = sc;
   }
 
@@ -193,8 +193,8 @@ export function Helix({
     // idle drift waits for the intro, pauses while a card is hovered and is off for reduced motion
     scroll.driftAllowed = elapsed > 2 && !s.hovered && !s.reducedMotion;
 
-    // negated so that scrolling down / arrow down moves forward through the list
-    const progress = -scroll.update(dt);
+    // scrolling down / arrow down moves forward through the list
+    const progress = scroll.update(dt);
     // shear from scroll velocity, per second so it feels the same at 30 and 120 fps, then smoothed;
     // pointer events arrive unevenly, so dragging gets a heavier filter than wheel/keys
     const maxShear = mobile ? 0.22 : 0.35;
@@ -203,7 +203,7 @@ export function Helix({
     const speed = shear.current;
 
     // the card closest to t = 0 is the one at the front; the caption follows it
-    const active = ((Math.round(n / 2 - progress) % n) + n) % n;
+    const active = ((Math.round(progress) % n) + n) % n;
     if (active !== s.active) s.setActive(active);
 
     // caption click: run the same transition as clicking the card
