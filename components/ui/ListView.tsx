@@ -45,7 +45,7 @@ export function ListView({ projects }: { projects: ProjectMeta[] }) {
           return (
             <li
               key={p.slug}
-              // touch taps go straight to the page, so only a real mouse or keyboard focus shows the preview
+              // touch taps go straight to the page, so only a real mouse or keyboard focus highlights the item
               onPointerEnter={(e) => e.pointerType === "mouse" && setHovered(p.slug)}
               onFocus={() => canHover() && setHovered(p.slug)}
             >

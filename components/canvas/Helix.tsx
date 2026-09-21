@@ -30,7 +30,7 @@ const _gq = new THREE.Quaternion();
 const noRaycast = () => {};
 const _p0 = new THREE.Vector3();
 const _p1 = new THREE.Vector3();
-// the list-view preview and the click transition must draw over everything else
+// the click transition must draw over everything else
 const PREVIEW_RENDER_ORDER = 1000;
 // the clicked card flies onto this world-space plane, where it lines up with the case study cover
 const FLIGHT_Z = 2.5;
@@ -88,8 +88,6 @@ export function Helix({
   const transition = useRef<Flight | null>(null);
   const parallax = useRef({ x: 0, y: 0 });
   const shear = useRef(0);
-  // index of the card currently parked at the list-view preview pose
-  const previewIndex = useRef(-1);
 
   const geometry = useMemo(
     () => new THREE.PlaneGeometry(params.cardW, params.cardH, 24, 24),
@@ -187,7 +185,6 @@ export function Helix({
     const onHome = s.pathname === "/";
     const spiralVisible = onHome && s.view === "spiral" && !s.transitioning;
     const listMode = onHome && s.view === "list";
-    if (!listMode) previewIndex.current = -1;
     const scroll = scrollRef.current!;
     scroll.enabled = spiralVisible && !s.menuOpen && s.loaded;
 
@@ -310,21 +307,8 @@ export function Helix({
       _e.set(0, pose.rotY, 0);
       _q.setFromEuler(_e);
 
-      // no preview on mobile: a tap in the list opens the page straight away
-      const hoveredInList = listMode && !mobile && s.hovered === projects[i].slug;
-      if (!spiralVisible && !hoveredInList) alphaTarget = 0;
-
-      if (hoveredInList) {
-        // float the hovered card to the right of the list, in world space
-        worldToLocalPose(g, mobile ? 0 : 2.3, mobile ? -1.2 : 0.15, 3.2, 0, -0.14);
-        tx = _v.x; ty = _v.y; tz = _v.z; tscale = mobile ? 0.9 : 1.15; alphaTarget = 1;
-        _q.copy(_q2);
-        // appear in place rather than flying in from the spiral
-        if (previewIndex.current !== i) {
-          previewIndex.current = i;
-          snap = true;
-        }
-      } else if (listMode) {
+      if (!spiralVisible) alphaTarget = 0;
+      if (listMode) {
         // fade out where the card is instead of drifting back to its spiral pose
         hold = true;
       }
@@ -366,22 +350,22 @@ export function Helix({
       const revealTarget = elapsed < 0 ? 0 : THREE.MathUtils.clamp((elapsed - i * 0.07) / 1.1, 0, 1);
       c.reveal = s.reducedMotion ? (elapsed < 0 ? 0 : 1) : easeOut(revealTarget);
       c.alpha = flying ? damp(c.alpha, 1, 14, dt) : damp(c.alpha, alphaTarget, hold ? 14 : 8, dt);
-      const zoomTarget = s.hovered === projects[i].slug && (spiralVisible || hoveredInList) ? 1 : 0;
+      const zoomTarget = s.hovered === projects[i].slug && spiralVisible ? 1 : 0;
       c.zoom = damp(c.zoom, zoomTarget, 10, dt);
 
       c.mesh.position.copy(c.pos);
       c.mesh.quaternion.copy(c.quat);
       c.mesh.scale.setScalar(c.scale);
       c.mesh.visible = c.alpha > 0.005;
-      c.mesh.renderOrder = hoveredInList || flying ? PREVIEW_RENDER_ORDER : 0;
+      c.mesh.renderOrder = flying ? PREVIEW_RENDER_ORDER : 0;
       // only solid cards may be hovered/clicked
       c.mesh.raycast = c.alpha > 0.55 && pose.depth < 0.8 ? meshRaycast : noRaycast;
 
-      c.mat.setU("uDepth", hoveredInList || flying ? 0 : pose.depth);
+      c.mat.setU("uDepth", flying ? 0 : pose.depth);
       c.mat.setU("uOpacity", c.alpha * (elapsed < 0 ? 0 : 1));
       c.mat.setU("uReveal", c.reveal);
       c.mat.setU("uZoom", c.zoom);
-      c.mat.setU("uScrollSpeed", hoveredInList || flying ? 0 : speed);
+      c.mat.setU("uScrollSpeed", flying ? 0 : speed);
     }
   });
 
