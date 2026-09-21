@@ -14,13 +14,13 @@ export type HelixParams = {
 };
 
 export const DESKTOP_HELIX: HelixParams = {
-  radius: 2,
+  radius: 2.5,
   stepAngle: 0.85,
   stepY: 0.5,
   maxYaw: 0.85,
   depthScale: 0.28,
   fadeWidth: 1.8,
-  tilt: [-0.1, 0, -0.06],
+  tilt: [-0.1, 0, -0.01],
   cardW: 1.7,
   cardH: 1.0,
   bend: 0.07,
@@ -35,7 +35,7 @@ export const MOBILE_HELIX: HelixParams = {
   stepY: 0.62,
   // next card below the front one, so a swipe up (or left) brings it in, as on any feed/carousel
   rise: -1,
-  tilt: [-0.1, 0, 0.18], // mirrored with `rise` so the spiral still reads as a gentle diagonal
+  tilt: [-0.1, 0, 0],
   cardW: 1.35,
   cardH: 0.85,
 };
