@@ -16,13 +16,13 @@ reports:
 credits: Adriano Machado · Faculty of Sciences, University of Porto
 ---
 
-## 1 Introduction
+## 1. Introduction
 
 <Lead>
 To set appropriate expectations for classification performance, it is essential to understand the complexity of a specific dataset. This report aims to analyze the data complexity of the Wine dataset from SciKit-Learn and discuss its implications for classification algorithms such as Decision Trees, K-Nearest Neighbors (KNN), and Support Vector Machines (SVM).
 </Lead>
 
-## 2 Methodology
+## 2. Methodology
 
 **(1) Data Preprocessing:** Certain complexity measures, such as F1 and F2, require normalized features. This was done by applying the `StandardScaler` from Scikit-Learn to standardize the feature set.
 
@@ -37,7 +37,7 @@ To set appropriate expectations for classification performance, it is essential 
 
 **(4) Classifier Evaluation:** Following the complexity analysis, we split the dataset into training and test sets. `GridSearchCV` was used for hyperparameter tuning of the three chosen classifiers (Decision Trees, KNN, and SVM), optimizing their parameters for each model to ensure fair performance comparison. The classifiers were evaluated based on metrics such as accuracy, precision, recall, and F1-score, allowing us to analyze how well each classifier performed in light of the dataset’s complexity.
 
-## 3 Results and Discussion
+## 3. Results and Discussion
 
 ### 3.1 Data Complexity Analysis
 
@@ -94,7 +94,7 @@ The previous conclusions about the complexity metrics are corroborated by the pe
 
 <p className="mono -mt-4 mb-8 normal-case tracking-normal text-muted">Table 1: Performance metrics of classification algorithms</p>
 
-## 4 Conclusions
+## 4. Conclusions
 
 The complexity measures employed in this study provided valuable informations about the characteristics of our dataset. These metrics allowed us to identify key properties that informed our understanding of which classification algorithms were likely to perform well and why some algorithms might underperform. The conclusions drawn from these metrics were validated when we tested the performance of our models.
 
