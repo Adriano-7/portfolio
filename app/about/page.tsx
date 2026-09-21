@@ -140,6 +140,28 @@ export default function AboutPage() {
             techniques like Self-Refine and team deliberation are worth their cost. Before that I studied how
             class imbalance degrades synthetic tabular data generation as a student researcher.
           </p>
+          <p>
+            Outside of research and code, you can usually find me playing tennis with friends or
+            listening to podcasts, especially{" "}
+            <a
+              href="https://www.acquired.fm"
+              target="_blank"
+              rel="noreferrer"
+              className="text-fg underline decoration-white/30 underline-offset-4 transition-colors hover:text-fg hover:decoration-accent"
+            >
+              Acquired FM
+            </a>{" "}
+            and{" "}
+            <a
+              href="https://therestishistory.com"
+              target="_blank"
+              rel="noreferrer"
+              className="text-fg underline decoration-white/30 underline-offset-4 transition-colors hover:text-fg hover:decoration-accent"
+            >
+              The Rest Is History
+            </a>
+            .
+          </p>
         </div>
 
         <section className="mt-16">
