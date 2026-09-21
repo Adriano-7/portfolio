@@ -121,6 +121,25 @@ export function Helix({
     return () => sc.detach();
   }, []);
 
+  // Enter opens the card currently at the front of the helix. UI controls keep
+  // ownership of the key so pressing Enter on the menu or view toggle behaves
+  // like a normal button activation.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Enter") return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.("[data-ui]")) return;
+      const s = useStore.getState();
+      if (s.pathname !== "/" || s.view !== "spiral" || s.menuOpen || s.transitioning || !s.loaded) return;
+      const project = projects[s.active];
+      if (!project) return;
+      e.preventDefault();
+      s.requestOpen(project.slug);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [projects]);
+
   useEffect(() => {
     return () => {
       materials.forEach((m) => m.dispose());

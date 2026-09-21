@@ -2,7 +2,7 @@
 export const site = {
   name: "Adriano Machado",
   firstName: "Adriano",
-  role: "machine learning engineer & researcher",
+  role: "machine learning engineer",
   location: "Porto, Portugal",
   email: "adriano.alexandre.machado1@gmail.com",
   github: "https://github.com/Adriano-7",

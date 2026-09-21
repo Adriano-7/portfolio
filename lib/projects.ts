@@ -49,6 +49,10 @@ function load(file: string): Project {
   const raw = fs.readFileSync(path.join(DIR, file), "utf8");
   const { data, content } = matter(raw);
   const slug = String(data.slug ?? file.replace(/\.mdx$/, ""));
+  const coverFile = String(data.cover ?? "cover.webp");
+  const coverSmFile = String(data.coverSm ?? coverFile);
+  const cover = `/projects/${slug}/${coverFile}`;
+  const coverSm = `/projects/${slug}/${coverSmFile}`;
   return {
     slug,
     title: String(data.title),
@@ -63,11 +67,11 @@ function load(file: string): Project {
     reports: reports(data, slug),
     grade: data.grade ? String(data.grade) : undefined,
     credits: data.credits ? String(data.credits) : undefined,
-    cover: `/projects/${slug}/cover.webp`,
-    coverSm: `/projects/${slug}/cover-sm.webp`,
+    cover,
+    coverSm,
     cardCover: fs.existsSync(path.join(process.cwd(), "public", "projects", slug, "cover-static.webp"))
       ? `/projects/${slug}/cover-static.webp`
-      : `/projects/${slug}/cover.webp`,
+      : cover,
     content: content.trim(),
   };
 }
