@@ -3,6 +3,8 @@ import Link from "next/link";
 import { site } from "@/lib/site";
 import { Reveal } from "@/components/ui/Reveal";
 
+import { AssociationShowcase, type Association } from "@/components/ui/AssociationShowcase";
+
 export const metadata: Metadata = {
   title: "About",
   description: `${site.name}, MSc in Artificial Intelligence at the University of Porto.`,
@@ -22,14 +24,90 @@ const timeline: { when: string; what: string; where: string }[] = [
   { when: "2021 – 2024", what: "BSc in Informatics and Computing Engineering", where: "FEUP, University of Porto" },
 ];
 
-const associations: { org: string; role: string; when: string; text: string; href?: string; hrefLabel?: string }[] = [
+const associations: Association[] = [
   {
     org: "ESN Porto",
     role: "IT manager",
     when: "2025 – 2026",
     text: "Led the IT department of the Porto section of Europe's largest student association, which welcomes 3500+ exchange students each semester. Built the section's public website, an asset requisition platform and a scholarship evaluation platform, and a model that forecasts ESN Card demand. Won the Lobos d'Ouro award for best national IT initiative.",
-    href: "https://github.com/Adriano-7/fcup-time-series-proj",
-    hrefLabel: "forecasting project",
+    photos: [
+      {
+        src: "/associations/esn/esn-team-pool.webp",
+        alt: "ESN Porto retreat team building",
+        caption: "ESN Porto retreat team building",
+      },
+      {
+        src: "/associations/esn/esn-vigo-trip.webp",
+        alt: "ESN trip to Vigo",
+        caption: "Trip to Vigo with exchange students",
+      },
+      {
+        src: "/associations/esn/esn-lisbon-praca.webp",
+        alt: "Trip to Lisbon",
+        caption: "Trip to Lisbon with exchange students",
+      },
+      {
+        src: "/associations/esn/esn-ski-trip.webp",
+        alt: "ESN Serra da Estrela snow trip",
+        caption: "Organizing team of the ESN trip to Serra da Estrela",
+      },
+      {
+        src: "/associations/esn/esn-sports-padel.webp",
+        alt: "ESN Porto padel tournament",
+        caption: "ESN Porto padel tournament with international students",
+      },
+      {
+        src: "/associations/esn/esn-porto-ribeira.webp",
+        alt: "ESN Porto welcoming international students",
+        caption: "Giving a city tour in Porto to international students during the welcome week",
+      },
+    ],
+  },
+  {
+    org: "SINF",
+    role: "Head of the program department",
+    when: "2025",
+    text: "Ran the program of Semana de Informática: 11 talks and 8 workshops, the largest line-up in six years. Speaker outreach, scheduling and on-site logistics with a team of volunteers.",
+    photos: [
+      {
+        src: "/associations/sinf/sinf-podium-presentation.webp",
+        alt: "Opening Steven Pemberton's talk at FEUP",
+        caption: "Opening Steven Pemberton's talk at FEUP",
+      },
+      {
+        src: "/associations/sinf/sinf-team-clifford-stoll.webp",
+        alt: "Photo with Steven Pemberton after his talk at SINF",
+        caption: "Photo with Steven Pemberton after his talk at SINF",
+      },
+    ],
+  },
+  {
+    org: "ENEI",
+    role: "Program department",
+    when: "2024 – 2025",
+    text: "Recruited speakers and curated 25 talks and 21 workshops for the national meeting of informatics students.",
+    photos: [
+      {
+        src: "/associations/enei/enei-stage-team.webp",
+        alt: "ENEI program team photo with Mike Pound",
+        caption: "ENEI program team photo with Mike Pound, keynote speaker at ENEI"
+      },
+      {
+        src: "/associations/enei/enei-speaker-team.webp",
+        alt: "Photo with Eddie Aftandilian ",
+        caption: "Photo with Eddie Aftandilian, keynote speaker at ENEI"
+      },
+      {
+        src: "/associations/enei/enei-celebration.webp",
+        alt: "ENEI's last meeting celebration with the team",
+        caption: "ENEI's last meeting celebration with the team"
+      },
+      {
+        src: "/associations/sinf/sinf-auditorium-discussion.webp",
+        alt: "Interacting with Mike Pound after his talk at SINF",
+        caption: "Interacting with Mike Pound after his talk at SINF"
+      },
+    ],
   },
   {
     org: "NIAEFEUP",
@@ -38,18 +116,6 @@ const associations: { org: string; role: string; when: string; text: string; hre
     text: "One of the three-person UI/UX team that led the redesign of UNI, the open-source Flutter app University of Porto students use every day, then part of the team implementing it.",
     href: "https://github.com/NIAEFEUP/uni",
     hrefLabel: "UNI on GitHub",
-  },
-  {
-    org: "SINF",
-    role: "Head of the program department",
-    when: "2025",
-    text: "Ran the program of Semana de Informática: 11 talks and 8 workshops, the largest line-up in six years. Speaker outreach, scheduling and on-site logistics with a team of volunteers.",
-  },
-  {
-    org: "ENEI",
-    role: "Program department",
-    when: "2024 – 2025",
-    text: "Recruited speakers and curated 25 talks and 21 workshops for the national meeting of informatics students.",
   },
 ];
 
@@ -92,32 +158,6 @@ export default function AboutPage() {
         </section>
 
         <section className="mt-16">
-          <h2 className="mono mb-5 text-muted">Outside the lab</h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            {associations.map((a) => (
-              <div key={a.org} className="rounded-2xl border border-white/10 p-5">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="mono text-accent">{a.org}</p>
-                  <p className="mono text-muted-2">{a.when}</p>
-                </div>
-                <p className="mt-2 text-fg">{a.role}</p>
-                <p className="mt-2 text-sm leading-relaxed text-muted">{a.text}</p>
-                {a.href && (
-                  <a
-                    href={a.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-3 inline-block text-sm text-fg/80 underline decoration-white/30 underline-offset-4 hover:decoration-accent"
-                  >
-                    {a.hrefLabel} ↗
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="mt-16">
           <h2 className="mono mb-5 text-muted">Toolbox</h2>
           <div className="space-y-4">
             {skills.map(([group, items]) => (
@@ -133,6 +173,11 @@ export default function AboutPage() {
               </div>
             ))}
           </div>
+        </section>
+
+        <section className="mt-16">
+          <h2 className="mono mb-5 text-muted">Outside the lab</h2>
+          <AssociationShowcase associations={associations} />
         </section>
 
         <section className="mt-16">

@@ -2,7 +2,13 @@ import { create } from "zustand";
 
 export type View = "spiral" | "list";
 
-export type Figure = { src: string; alt: string; caption?: string };
+export type Figure = {
+  src: string;
+  alt: string;
+  caption?: string;
+  gallery?: Figure[];
+  index?: number;
+};
 
 type State = {
   view: View;

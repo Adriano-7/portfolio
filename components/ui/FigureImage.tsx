@@ -20,8 +20,24 @@ export function FigureImage({ src, alt, caption }: { src: string; alt: string; c
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt={alt} loading="lazy" className="block w-full" />
-      <span className="mono pointer-events-none absolute bottom-2 right-2 rounded-full bg-black/70 px-2.5 py-1 text-fg opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-        enlarge
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-3 right-3 flex h-7 w-7 items-center justify-center rounded-full bg-black/75 text-white/90 shadow-sm backdrop-blur-xs opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="13"
+          height="13"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="11" cy="11" r="7.5" />
+          <path d="m21 21-4.35-4.35" />
+        </svg>
       </span>
     </button>
   );

@@ -82,6 +82,14 @@ html[data-home="true"] body {
   transform: translateY(-1px);
 }
 
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

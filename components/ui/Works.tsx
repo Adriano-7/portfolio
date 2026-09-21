@@ -20,7 +20,6 @@ export function Works({ projects }: { projects: ProjectMeta[] }) {
       <p
         className={`mono absolute bottom-6 right-6 hidden text-muted-2 transition-opacity duration-1000 md:block ${loaded && view === "spiral" ? "opacity-100" : "opacity-0"}`}
       >
-        scroll · drag · arrows
       </p>
     </div>
   );
