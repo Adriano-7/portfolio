@@ -22,14 +22,14 @@ export const DESKTOP_HELIX: HelixParams = {
   stepY: 0.6,
   maxYaw: 1,
   maxPitch: 0.18,
-  maxRoll: 0.14,
+  maxRoll: 0.22,
   frontScale: 0.14,
   depthScale: 0.34,
   fadeWidth: 1.45,
   tilt: [-0.055, 0.02, -0.015],
   cardW: 1.7,
   cardH: 1.0,
-  bend: 0.15,
+  bend: 0.11,
   rise: 1,
 };
 
@@ -40,14 +40,14 @@ export const MOBILE_HELIX: HelixParams = {
   radius: 1.82,
   stepY: 0.68,
   maxPitch: 0.12,
-  maxRoll: 0.08,
+  maxRoll: 0.14,
   frontScale: 0.08,
   // next card below the front one, so a swipe up (or left) brings it in, as on any feed/carousel
   rise: -1,
   tilt: [-0.055, 0.02, 0],
   cardW: 1.35,
   cardH: 0.85,
-  bend: 0.11,
+  bend: 0.08,
 };
 
 export type Pose = {

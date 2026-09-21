@@ -4,6 +4,8 @@ const vertexShader = /* glsl */ `
   uniform float uBend;
   uniform float uScrollSpeed;
   uniform float uDepth;
+  uniform float uSide;
+  uniform float uSeed;
   varying vec2 vUv;
 
   void main() {
@@ -12,10 +14,17 @@ const vertexShader = /* glsl */ `
     // Rear cards catch more of the "wind" so the cylinder has a soft, flexible surface.
     float arch = sin(uv.x * 3.14159265);
     float rear = smoothstep(0.12, 0.95, uDepth);
-    float curl = uBend * (1.0 + rear * 0.85);
+    float side = smoothstep(0.12, 0.85, uSide);
+    float shape = max(rear, side * 0.82);
+    // Keep the side silhouette mostly planar; reserve the stronger flex for the rear.
+    float curl = uBend * (1.0 + rear * 0.8 + side * 0.2);
     p.z += arch * curl;
-    p.y += arch * sin(uv.y * 3.14159265) * curl * 0.18;
-    p.x += sin(uv.y * 3.14159265) * curl * rear * 0.12;
+    p.y += arch * sin(uv.y * 3.14159265) * curl * 0.12;
+    p.x += sin(uv.y * 3.14159265) * curl * rear * 0.08;
+    // Cards skew as they turn around the sides, not only when they reach the rear.
+    float lean = sin(uSeed * 1.73 + 0.9);
+    p.x += (uv.y - 0.5) * shape * lean * 0.32;
+    p.y += (uv.x - 0.5) * shape * lean * 0.2;
     // shear while the helix is moving
     p.y += (uv.x - 0.5) * uScrollSpeed;
     p.x += sin(uv.y * 3.14159265) * uScrollSpeed * 0.25;
@@ -101,6 +110,7 @@ export type CardUniformName =
   | "uReveal"
   | "uZoom"
   | "uDepth"
+  | "uSide"
   | "uOpacity"
   | "uScrollSpeed"
   | "uBend"
@@ -126,6 +136,7 @@ export class CardMaterial extends THREE.ShaderMaterial {
         uReveal: { value: 0 },
         uZoom: { value: 0 },
         uDepth: { value: 0 },
+        uSide: { value: 0 },
         uOpacity: { value: 0 },
         uScrollSpeed: { value: 0 },
         uBend: { value: opts.bend },

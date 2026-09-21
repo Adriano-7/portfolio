@@ -361,6 +361,8 @@ export function Helix({
       c.mesh.raycast = c.alpha > 0.55 && pose.depth < 0.8 ? meshRaycast : noRaycast;
 
       c.mat.setU("uDepth", flying ? 0 : pose.depth);
+      // Side exposure is separate from depth: cards deform while rounding either edge.
+      c.mat.setU("uSide", flying ? 0 : Math.sqrt(4 * pose.depth * (1 - pose.depth)));
       c.mat.setU("uOpacity", c.alpha * (elapsed < 0 ? 0 : 1));
       c.mat.setU("uReveal", c.reveal);
       c.mat.setU("uZoom", c.zoom);
