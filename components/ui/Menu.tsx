@@ -11,7 +11,7 @@ const links = [
 ];
 
 const iconClass =
-  "grid h-9 w-9 place-items-center rounded-full bg-black text-white transition-transform hover:scale-105";
+  "grid h-9 w-9 place-items-center rounded-full border border-white/12 bg-white/[0.06] text-fg/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all hover:border-white/25 hover:bg-white/[0.14] hover:text-white hover:scale-105";
 
 export function Menu() {
   const open = useStore((s) => s.menuOpen);
@@ -32,18 +32,22 @@ export function Menu() {
         type="button"
         aria-label="Close menu"
         onClick={() => setOpen(false)}
-        className={`absolute inset-0 bg-black/40 transition-opacity duration-500 ${open ? "opacity-100" : "opacity-0"}`}
+        className={`absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity duration-500 ${open ? "opacity-100" : "opacity-0"}`}
       />
       <div
         id="site-menu"
         ref={panel}
         role="dialog"
         aria-label="Site menu"
-        className={`absolute right-3 top-3 bottom-3 flex w-[min(92vw,420px)] flex-col justify-between rounded-2xl bg-panel p-7 text-panel-fg shadow-2xl transition-transform duration-500 ease-[cubic-bezier(.2,.8,.2,1)] md:right-5 md:top-5 md:bottom-5 ${open ? "translate-x-0" : "translate-x-[calc(100%+2rem)]"}`}
+        className={`absolute right-3 top-3 bottom-3 flex w-[min(92vw,420px)] flex-col justify-between rounded-2xl border border-white/12 bg-[#0d0d0d]/80 p-7 text-fg shadow-[0_24px_64px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-2xl transition-transform duration-500 ease-[cubic-bezier(.2,.8,.2,1)] md:right-5 md:top-5 md:bottom-5 ${open ? "translate-x-0" : "translate-x-[calc(100%+2rem)]"}`}
       >
         <div className="flex items-center justify-between">
-          <span className="mono text-black/50">{site.location}</span>
-          <button type="button" onClick={() => setOpen(false)} className="mono text-black/60 hover:text-black">
+          <span className="mono text-muted">{site.location}</span>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="mono text-muted transition-colors hover:text-fg"
+          >
             close ×
           </button>
         </div>
@@ -55,7 +59,7 @@ export function Menu() {
               href={l.href}
               onClick={() => setOpen(false)}
               tabIndex={open ? 0 : -1}
-              className="text-[clamp(2.4rem,7vw,3.4rem)] font-medium leading-[1.05] tracking-[-0.02em] transition-colors hover:text-black/50"
+              className="text-[clamp(2.4rem,7vw,3.4rem)] font-medium leading-[1.05] tracking-[-0.02em] text-fg/90 transition-colors hover:text-white"
               style={{ transitionDelay: `${i * 40}ms` }}
             >
               {l.label}
@@ -65,7 +69,7 @@ export function Menu() {
             <a
               href={`mailto:${site.email}`}
               tabIndex={open ? 0 : -1}
-              className="text-[clamp(2.4rem,7vw,3.4rem)] font-medium leading-[1.05] tracking-[-0.02em] transition-colors hover:text-black/50"
+              className="text-[clamp(2.4rem,7vw,3.4rem)] font-medium leading-[1.05] tracking-[-0.02em] text-fg/90 transition-colors hover:text-white"
             >
               contact
             </a>
@@ -75,7 +79,7 @@ export function Menu() {
               target="_blank"
               rel="noreferrer"
               tabIndex={open ? 0 : -1}
-              className="text-[clamp(2.4rem,7vw,3.4rem)] font-medium leading-[1.05] tracking-[-0.02em] transition-colors hover:text-black/50"
+              className="text-[clamp(2.4rem,7vw,3.4rem)] font-medium leading-[1.05] tracking-[-0.02em] text-fg/90 transition-colors hover:text-white"
             >
               contact
             </a>
@@ -89,7 +93,7 @@ export function Menu() {
               target="_blank"
               rel="noreferrer"
               tabIndex={open ? 0 : -1}
-              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-black px-4 text-sm text-white transition-transform hover:scale-105"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.08] px-4 text-sm font-medium text-fg shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all hover:border-white/25 hover:bg-white/[0.14] hover:text-white hover:scale-105"
             >
               cv
               <span aria-hidden>↗</span>
