@@ -17,20 +17,14 @@ export type HelixParams = {
 };
 
 export const DESKTOP_HELIX: HelixParams = {
-  // A tighter orbit, viewed from farther away, keeps the depth readable without
-  // making the far half collapse into tiny cards.
-  radius: 2.25,
+  radius: 2.72,
   stepAngle: 0.76,
   stepY: 0.6,
-  // Each card's face follows the cylinder normal, so the helix reads as one
-  // continuous surface instead of individually turned floating panels.
   maxYaw: 1,
   maxPitch: 0.18,
   maxRoll: 0.22,
-  frontScale: 0.02,
-  // Perspective supplies the depth cue; retain nearly the same card size
-  // through the orbit, as in the reference composition.
-  depthScale: 0.04,
+  frontScale: 0.14,
+  depthScale: 0.34,
   fadeWidth: 1.45,
   tilt: [-0.055, 0.02, -0.015],
   cardW: 1.7,
@@ -45,11 +39,9 @@ export const MOBILE_HELIX: HelixParams = {
   ...DESKTOP_HELIX,
   radius: 1.82,
   stepY: 0.68,
-  maxYaw: 1,
   maxPitch: 0.12,
   maxRoll: 0.14,
   frontScale: 0.08,
-  depthScale: 0.34,
   // next card below the front one, so a swipe up (or left) brings it in, as on any feed/carousel
   rise: -1,
   tilt: [-0.055, 0.02, 0],
