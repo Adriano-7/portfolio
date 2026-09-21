@@ -23,9 +23,10 @@ export function RouteSync() {
 
   useEffect(() => {
     const v = search.get("view");
-    if (v === "list" || v === "spiral") {
+    if (v === "list" || v === "spiral" || v === "3d") {
       const s = useStore.getState();
-      if (s.webgl && !s.reducedMotion) s.setView(v);
+      const targetView = v === "list" ? "list" : "spiral";
+      if (s.webgl && !s.reducedMotion) s.setView(targetView);
     }
   }, [search]);
 

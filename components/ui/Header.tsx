@@ -35,7 +35,11 @@ export function Header() {
         <span className="hidden text-sm text-fg/90 md:block">{site.name}</span>
       </Link>
 
-      {onHome ? <ViewToggle /> : <span />}
+      {onHome && (
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 items-center justify-center">
+          <ViewToggle />
+        </div>
+      )}
 
       <button
         type="button"
