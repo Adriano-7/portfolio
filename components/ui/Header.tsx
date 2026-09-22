@@ -44,16 +44,29 @@ export function Header() {
       <button
         type="button"
         onClick={() => setMenuOpen(!menuOpen)}
+        aria-label={menuOpen ? "Close menu" : "Open menu"}
+        title={menuOpen ? "Close menu" : "Open menu"}
         aria-expanded={menuOpen}
         aria-controls="site-menu"
-        className={`pointer-events-auto inline-flex items-center gap-2.5 rounded-full border px-4 py-1.5 text-sm font-medium transition-all duration-200 active:scale-95 ${
+        className={`pointer-events-auto inline-flex h-9 w-[3.75rem] items-center justify-center gap-2 rounded-full border text-sm font-medium transition-all duration-200 active:scale-95 ${
           menuOpen
             ? "border-accent/40 bg-accent/10 text-accent shadow-[0_0_16px_rgba(245,165,36,0.15)]"
             : "border-white/12 bg-white/[0.06] text-fg/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_4px_16px_rgba(0,0,0,0.3)] backdrop-blur-md hover:border-white/25 hover:bg-white/[0.12] hover:text-white"
         }`}
       >
-        <span>{menuOpen ? "close" : "menu"}</span>
-        <span className="block h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_6px_var(--accent)]" />
+        <svg
+          aria-hidden="true"
+          width="16"
+          height="14"
+          viewBox="0 0 16 14"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          className="shrink-0"
+        >
+          {menuOpen ? <path d="m2 2 12 10M14 2 2 12" /> : <path d="M1 2h14M1 7h14M1 12h14" />}
+        </svg>
       </button>
     </header>
   );

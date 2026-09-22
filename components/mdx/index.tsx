@@ -48,6 +48,67 @@ export function Table({ head, rows }: { head: string[]; rows: string[][] }) {
   );
 }
 
+export function Transcript({
+  title,
+  meta,
+  children,
+}: {
+  title: string;
+  meta: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="my-8 overflow-hidden rounded-xl border border-white/10 bg-white/[0.025]">
+      <header className="border-b border-white/10 bg-white/[0.03] px-5 py-4">
+        <h3 className="!mt-0 !text-base !font-medium !text-fg">{title}</h3>
+        <p className="mono !mb-0 !mt-1 text-xs normal-case tracking-normal text-muted">{meta}</p>
+      </header>
+      <div className="space-y-4 px-5 py-5">{children}</div>
+    </section>
+  );
+}
+
+const transcriptTone = {
+  offer: "border-[#f5a524]/35 bg-[#f5a524]/[0.07]",
+  reply: "border-sky-300/25 bg-sky-300/[0.05]",
+  private: "border-violet-300/25 bg-violet-300/[0.05]",
+  system: "border-white/10 bg-white/[0.03]",
+} as const;
+
+export function TranscriptMessage({
+  speaker,
+  label,
+  tone = "system",
+  children,
+}: {
+  speaker: string;
+  label?: string;
+  tone?: keyof typeof transcriptTone;
+  children: ReactNode;
+}) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:gap-4">
+      <div className="mono pt-2 text-[0.68rem] uppercase tracking-[0.12em] text-muted">
+        <span className="block text-fg">{speaker}</span>
+        {label && <span className="mt-0.5 block">{label}</span>}
+      </div>
+      <div
+        className={`rounded-lg border px-4 py-3 text-[0.95rem] leading-7 text-[#d4d4d4] [&_p]:!my-0 [&_p+p]:!mt-2 [&_code]:rounded [&_code]:bg-black/20 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.85em] [&_code]:text-fg ${transcriptTone[tone]}`}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function TranscriptOutcome({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-lg border border-emerald-300/25 bg-emerald-300/[0.06] px-4 py-3 text-[0.95rem] leading-7 text-[#d4d4d4] [&_p]:!my-0 [&_strong]:font-medium [&_strong]:text-emerald-200">
+      {children}
+    </div>
+  );
+}
+
 function A(props: ComponentPropsWithoutRef<"a">) {
   const external = props.href?.startsWith("http");
   return <a {...props} target={external ? "_blank" : undefined} rel={external ? "noreferrer" : undefined} />;
@@ -90,5 +151,14 @@ export function Video({
   );
 }
 
-export const mdxComponents: MDXComponents = { Lead, Figure, Table, Video, video: Video, a: A };
-
+export const mdxComponents: MDXComponents = {
+  Lead,
+  Figure,
+  Table,
+  Transcript,
+  TranscriptMessage,
+  TranscriptOutcome,
+  Video,
+  video: Video,
+  a: A,
+};

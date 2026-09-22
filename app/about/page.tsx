@@ -70,6 +70,16 @@ const associations: Association[] = [
     text: "Ran the program of Semana de Informática: 11 talks and 8 workshops, the largest line-up in six years. Speaker outreach, scheduling and on-site logistics with a team of volunteers.",
     photos: [
       {
+        src: "/associations/sinf/DJI_20251021161509_0007_D.jpg",
+        alt: "Pedro Coelho speaking at SINF",
+        caption: "Pedro Coelho's talk at SINF",
+      },
+      {
+        src: "/associations/sinf/DSC_0787.jpg",
+        alt: "Steven Pemberton speaking at SINF",
+        caption: "Steven Pemberton's talk at SINF",
+      },
+      {
         src: "/associations/sinf/sinf-podium-presentation.webp",
         alt: "Opening Steven Pemberton's talk at FEUP",
         caption: "Opening Steven Pemberton's talk at FEUP",
@@ -85,8 +95,13 @@ const associations: Association[] = [
     org: "ENEI",
     role: "Program department",
     when: "2024 – 2025",
-    text: "Recruited speakers and curated 25 talks and 21 workshops for the national meeting of informatics students.",
+    text: "Member of the department that recruited speakers and curated 25 talks and 21 workshops for the national meeting of informatics students.",
     photos: [
+      {
+        src: "/associations/enei/enei-celebration.webp",
+        alt: "ENEI's last meeting celebration with the team",
+        caption: "ENEI's last meeting celebration with the team"
+      },
       {
         src: "/associations/enei/enei-stage-team.webp",
         alt: "ENEI program team photo with Mike Pound",
@@ -98,12 +113,7 @@ const associations: Association[] = [
         caption: "Photo with Eddie Aftandilian, keynote speaker at ENEI"
       },
       {
-        src: "/associations/enei/enei-celebration.webp",
-        alt: "ENEI's last meeting celebration with the team",
-        caption: "ENEI's last meeting celebration with the team"
-      },
-      {
-        src: "/associations/sinf/sinf-auditorium-discussion.webp",
+        src: "/associations/enei/sinf-auditorium-discussion.webp",
         alt: "Interacting with Mike Pound after his talk at SINF",
         caption: "Interacting with Mike Pound after his talk at SINF"
       },

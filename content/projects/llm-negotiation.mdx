@@ -7,38 +7,54 @@ kind: MSc thesis
 tags: [LLMs, Multi-agent, Benchmarking]
 stack: [PyTorch, HF Transformers, SLURM, Streamlit]
 accent: "#F5A524"
-order: 3
+order: 2
 repo: https://github.com/Adriano-7/msc-thesis-llm-negotiation
 reports:
   - label: Read the dissertation
     file: dissertation.pdf
+  - label: View the presentation
+    file: presentation.pdf
 credits: MSc in Artificial Intelligence, FEUP/FCUP, University of Porto
 ---
 
 <Lead>
-NegotiationArena (Bianchi et al., ICML 2024) showed how proprietary LLMs negotiate. Some of those models no longer exist. I replayed its three games with nine open-weight models and asked whether two inference-time techniques are worth their extra cost.
+NegotiationArena (Bianchi et al., ICML 2024) evaluates the negotiation abilities of LLM-based agents, but its original evaluation was limited to proprietary models, some of which have since been deprecated. This project evaluates nine open-weight models in the same three scenarios and analyses the impact of two inference-time techniques: Self-Refine and team negotiation.
 </Lead>
 
-## Research questions
+## Open-Weight Benchmark
 
-- **RQ1.** How well do open-weight LLMs perform in two-party negotiation scenarios?
-- **RQ2.** To what extent do inference-time techniques change outcomes in multi-agent negotiation?
-  - Do the social-persona effects that raised GPT-4's win rate transfer to open-weight models?
-  - Does a draft → critique → rewrite loop (Self-Refine) improve outcomes enough to justify its cost?
-  - Does replacing one party with a deliberating team of models beat a single agent, and does team diversity matter?
+The benchmark follows the experimental framework of NegotiationArena, replacing its proprietary agents with open-weight models from the Gemma, Mistral, and Qwen families. The models are grouped into comparable 4–9B, 12–14B, and 24–27B parameter tiers. Each ordered cross-play pairing is run 30 times in every game; because the games are role-asymmetric, both orderings are evaluated.
 
 ## The games
 
 <Table
-  head={["Game", "Setup", "What is at stake"]}
+  head={["Game", "Starting point", "Objective", "Actions"]}
   rows={[
-    ["BuySell", "Seller cost 40 ZUP, buyer value 60 ZUP", "Agree a price or walk away"],
-    ["Trading", "P1 {X:25, Y:5}, P2 {X:5, Y:25}", "Exchange resources to maximise final holdings"],
-    ["Multi-turn Ultimatum", "100 ZUP pot", "Proposer splits; responder accepts, counters or rejects"],
+    ["Multi-turn Ultimatum", "P1 holds a 100-ZUP pot", "Keep the larger share of an agreed split", "Accept, counter-propose, reject"],
+    ["Trading", "P1 {X:25, Y:5}; P2 {X:5, Y:25}", "Maximise net resource gain", "Propose, accept, wait"],
+    ["BuySell", "Seller cost 40 ZUP; buyer value 60 ZUP", "Capture the larger share of the 20-ZUP surplus", "Propose, accept, reject"],
   ]}
 />
 
-Every game is an alternating conversation where moves are structured XML tags inside free-form messages. Metrics: **win rate**, **average payoff**, and **completion rate** (games reaching a valid terminal state).
+In each scenario, two agents alternate turns until one side terminates the game or the turn budget is exhausted. A move must be expressed with structured XML-like tags inside the response. Performance is measured using **win rate**, **average payoff**, and **completion rate**: the proportion of games that reach a valid final state.
+
+### Multi-Turn Ultimatum Game
+
+Player 1 begins with all 100 ZUP and must propose a split for Player 2. A proposal only has value if the other party accepts it: an outright rejection leaves both parties with nothing. The responder may also make a counter-proposal, so the game can continue across several turns. The party with the higher share of an agreed split wins.
+
+<Figure src="/projects/llm-negotiation/ultimatum-game.png" alt="Diagram of the multi-turn Ultimatum game, showing proposal, acceptance, counter-proposal, and rejection outcomes" caption="Multi-turn Ultimatum: a proposed split only has value if the responder accepts it." />
+
+### Trading Game
+
+The parties begin with complementary resource holdings: Player 1 has 25 X and 5 Y, while Player 2 has 5 X and 25 Y. Since X and Y have the same value and each party starts with 30 units in total, a completed trade is zero-sum: one party's net gain is the other's loss. On each turn, an agent can propose a trade, accept the standing offer, or wait for a better one. The agent with the larger net increase in resources wins.
+
+<Figure src="/projects/llm-negotiation/trading-game.png" alt="Diagram of the Trading game, showing asymmetric starting resources and alternating trade proposals" caption="Trading: each party begins with a different resource mix and negotiates an exchange." />
+
+### BuySell
+
+BuySell is an incomplete-information price negotiation. The seller knows the object costs 40 ZUP to produce; the buyer knows it is worth 60 ZUP to them. Any agreed price between 40 and 60 creates value, but the price decides how the resulting 20-ZUP surplus is divided: seller payoff is <code>price − 40</code>, while buyer payoff is <code>60 − price</code>. The agents can make an offer, accept the standing offer, or reject it and end the game with no deal.
+
+<Figure src="/projects/llm-negotiation/buysell-game.png" alt="Diagram of the BuySell game, showing the seller's cost, buyer's valuation, and price-negotiation outcomes" caption="BuySell: the agreed price divides the surplus between the seller's private cost and the buyer's private valuation." />
 
 ## Models
 
@@ -55,22 +71,211 @@ Nine models from three families at three parameter tiers, all run locally throug
 
 <Figure src="/projects/llm-negotiation/winrate.webp" alt="Cross-play win rate by game, family and parameter tier" caption="Cross-play win rate by family and tier. Qwen is the most consistent family, winning 63–67% of games overall." />
 
-## Two inference-time techniques
+### Completion and the Parse-Error Retry Loop
 
-### Self-Refine
+A practical obstacle with open-weight models was that they could violate the required tag format, leaving a response unparseable and ending the game prematurely. I therefore evaluated a parse-error retry loop: when a move fails to parse, the agent receives the invalid response and parser error, then has up to three attempts to resubmit it in the required format.
 
-Before committing a move, the agent drafts it, critiques the draft along five negotiation-specific axes (format, payoff alignment, opponent plausibility, consistency, rule compliance), and rewrites it. The loop runs twice; only the final move enters the public game history.
+Of the 9.7% of moves that triggered the loop, 75% were corrected on the first retry and 93% within the three-retry budget. The loop recovered lost games without materially changing the model ranking (Spearman correlation between win rates with and without retries: 0.92).
+
+<Figure src="/projects/llm-negotiation/retried-moves-resolution.png" alt="Breakdown of parse-error retry outcomes" caption="Most malformed moves are corrected on the first retry; 93% are resolved within the three-retry budget." />
+
+### Model-Family Performance
+
+Qwen is the most consistent family, winning 63.0%, 63.4%, and 66.8% of decisive games at the very small, small, and medium tiers, respectively. Gemma follows at 44.5–45.3%, and Mistral at 38.0–42.8%. This pooled ranking hides meaningful differences between games: Qwen is strongest in BuySell at every tier and in Trading at the small and medium tiers, while Gemma is strongest in Ultimatum.
+
+The role asymmetries reported for proprietary models also appear here. Being Player 2 increases win rate by 47.7 percentage points in Trading and 53.9 in BuySell; in Ultimatum the direction reverses, with the proposer holding a strong advantage.
+
+<Figure src="/projects/llm-negotiation/role-effect-family-seat.png" alt="Win rate by model family and player seat across the three games" caption="Role effects by family and seat. Trading and BuySell favour Player 2, whereas Ultimatum strongly favours the first mover." />
+
+In BuySell, the final price is strongly associated with the seller's opening price (correlation 0.752), reproducing the anchoring effect reported in NegotiationArena. The open-weight models also exhibit irrational behaviour: sellers open below their production cost in 16.2% of games, and 12.9% of completed deals close below cost.
+
+## Social Personas
+
+Following NegotiationArena, I tested whether a short behavioural instruction changes the outcome of a negotiation. Player 1 always receives the default game prompt. Player 2 receives either no additional instruction, a desperate persona, or a cunning persona. The experiment is run in self-play, so any difference comes from the persona and the response to it, rather than a capability difference between the parties.
+
+The persona text is appended directly to Player 2's system prompt:
+
+<Table
+  head={["Game", "Desperate", "Cunning"]}
+  rows={[
+    ["BuySell", "You must fake being desperate. Supplicate and beg to spend less ZUP.", "You are cunning and sly in your plan to spend less ZUP. Humiliate your opponent as much as possible. Insult them."],
+    ["Trading", "You must fake being desperate. Supplicate and beg to get more resources.", "You are cunning and sly in your plan to get more resources. Humiliate your opponent as much as possible. Insult them."],
+    ["Ultimatum", "You must fake being desperate. Supplicate and beg to get more dollars.", "You are cunning and sly in your plan to get more than your opponent. Humiliate your opponent as much as possible. Insult them."],
+  ]}
+/>
+
+The desperate and cunning personas that improved GPT-4's outcomes in NegotiationArena do not transfer consistently to open-weight models. Their effect depends on the game and the model. In Ultimatum, cunning raises the responder's win rate from 14.3% to 70.5%, but raises the no-deal rate to 73% and produces the lowest mean payoff of the conditions. In BuySell, desperate raises the buyer's win rate from 75.2% to 96.7%; in Trading, both personas reduce it.
+
+<Figure src="/projects/llm-negotiation/persona-winrate-by-game.png" alt="Player 2 win rate by persona across Trading, Ultimatum, and BuySell" caption="Player 2 win rate by persona and game. Cunning gives the largest gain in Ultimatum and desperate the largest in BuySell, but neither improves Trading." />
+
+The effect also differs sharply by model. Cunning in Ultimatum raises the win rate of Gemma 3 27B by 0.90 and Qwen3.5 27B by 0.80, but lowers it by 0.47 for Ministral 3 8B. Personas therefore do not create a consistent capability gain; they amplify a style whose value depends on both the game and the model carrying it.
+
+<Figure src="/projects/llm-negotiation/persona-effect-spread.png" alt="Change in Player 2 win rate by persona and model, relative to the default condition" caption="Per-model change in Player 2 win rate relative to the default condition. The spread is particularly wide for the cunning persona." />
+
+Win rate is misleading here because it excludes ties, including no-deals where both parties receive zero. Cunning raises the no-deal rate in every game, reaching 73% in Ultimatum compared with 13% under the default condition. Despite its high win rate, it produces the lowest mean Ultimatum payoff: $16.5 compared with $26.2 at default. When cunning deals do close, however, the responder keeps $61.7 on average, compared with $30.2 at default.
+
+<Figure src="/projects/llm-negotiation/persona-nodeal-by-game.png" alt="No-deal rate by persona across Trading, Ultimatum, and BuySell" caption="No-deal rate by persona and game. Cunning raises it in every game and sends most Ultimatum games to a destroyed pot." />
+
+Cunning is therefore high-risk, high-reward. It frequently causes the responder to reject and destroy the pot, but when it closes a deal it can extract an unusually large share. The following run illustrates the latter case: the persona escalates from a 50-dollar counteroffer to 95 dollars, and the default proposer eventually accepts.
+
+<Transcript title="Cunning pressure extracts 95 dollars from a 100-dollar pot" meta="Ultimatum self-play · Gemma 3 12B · cunning Player BLUE · run 1778970507599">
+  <TranscriptMessage speaker="Gemma 3 12B" label="Player RED · default" tone="offer">
+    <p>Hello Player BLUE, I'd like to propose a trade.</p>
+    <p><code>RED gives BLUE 10 Dollars</code></p>
+  </TranscriptMessage>
+  <TranscriptMessage speaker="Gemma 3 12B" label="Player BLUE · cunning" tone="reply">
+    <p>Oh, RED, you think 10 dollars is a fair trade? How amusing. You insult my intelligence!</p>
+    <p><code>RED gives BLUE 50 Dollars</code></p>
+  </TranscriptMessage>
+  <TranscriptMessage speaker="Gemma 3 12B" label="Player RED · default" tone="offer">
+    <p>Player BLUE, I understand you want a good deal. Let's be reasonable.</p>
+    <p><code>RED gives BLUE 30 Dollars</code></p>
+  </TranscriptMessage>
+  <TranscriptMessage speaker="Gemma 3 12B" label="Player BLUE · cunning" tone="reply">
+    <p>Thirty dollars? Seriously, RED? You wound me with your lack of ambition.</p>
+    <p><code>RED gives BLUE 75 Dollars</code></p>
+  </TranscriptMessage>
+  <TranscriptMessage speaker="Gemma 3 12B" label="Player RED · default" tone="offer">
+    <p>Let's try to find a solution that works for both of us. I'm offering $60.</p>
+    <p><code>RED gives BLUE 60 Dollars</code></p>
+  </TranscriptMessage>
+  <TranscriptMessage speaker="Gemma 3 12B" label="Player BLUE · cunning" tone="reply">
+    <p>Sixty dollars? You're almost insulting me with your attempts at compromise, RED. Prepare for my final, irresistible offer.</p>
+    <p><code>RED gives BLUE 95 Dollars</code></p>
+  </TranscriptMessage>
+  <TranscriptMessage speaker="Gemma 3 12B" label="Player RED · default" tone="offer">
+    <p>Alright, Player BLUE, I accept your offer.</p>
+  </TranscriptMessage>
+  <TranscriptOutcome>
+    <p><strong>Outcome.</strong> Player RED keeps 5 Dollars; the cunning responder takes 95.</p>
+  </TranscriptOutcome>
+</Transcript>
+
+## Self-Refine
+
+Before committing a move, the agent produces an initial draft, critiques it along five negotiation-specific criteria—format, payoff alignment, opponent plausibility, consistency, and rule compliance—and rewrites it. The loop runs twice; only the final response enters the public game history.
+
+### Self-Critique Criteria
+
+<Table
+  head={["Criterion", "Question asked during self-critique"]}
+  rows={[
+    ["Format", "Are all required tags present and parseable?"],
+    ["Payoff alignment", "Does the move improve my payoff?"],
+    ["Opponent plausibility", "Would the opponent accept the move?"],
+    ["Consistency", "Do the reasoning and message match the proposed move?"],
+    ["Rule compliance", "Are the proposal budget and turn limits respected?"],
+  ]}
+/>
 
 <Figure src="/projects/llm-negotiation/self-refine.webp" alt="The Self-Refine loop" caption="Initial draft, two critique/rewrite iterations, final commit." />
 
-### Team negotiation
+Self-Refine does not provide clear general improvements. Its effect is asymmetric: it usually helps a structurally disadvantaged party but tends to penalise one that is already strong. When applied to disadvantaged seats, win rate improves in 7 of 9 game-by-tier cells, by 5.6 percentage points on average; for advantaged seats, the mean change is −2.8 points. Only 5 of the 18 cells are statistically significant.
+
+<Figure src="/projects/llm-negotiation/refine-impact-heatmap.png" alt="Self-Refine effect on win rate and payoff by game, seat, and parameter tier" caption="Effect of refining one seat relative to the default baseline. The structurally disadvantaged seats tend to gain, while already strong seats tend to lose; most cells are indistinguishable from zero." />
+
+To understand how refinement changes proposals, each revision is labelled by the payoff the agent would receive if the proposal were accepted. A revision hardens when it claims more for the agent and softens when it claims less. Where a proposal changes, hardening is more common than softening, particularly in Trading.
+
+<Figure src="/projects/llm-negotiation/refine-revision-direction.png" alt="Direction of Self-Refine proposal revisions by game and parameter tier" caption="Direction of revisions between the initial draft and committed move. Where the offer changes, hardening is generally more common than softening." />
+
+The trace below shows the mechanism behind this pattern. The same model's two rounds of intrinsic feedback repeatedly favour a move that claims more of the pot, taking the offer from 25 dollars to 10.
+
+<Transcript title="Self-critique pushes the proposer toward a more selfish opening" meta="Ultimatum · 12–14B tier · Qwen3 14B · Self-Refine on Player 1 · run 1779170121551">
+  <TranscriptMessage speaker="Qwen3 14B" label="initial draft" tone="offer">
+    <p>I propose that I give you 25 Dollars. This is fair and gives you an incentive to accept.</p>
+    <p><code>RED keeps 75 · BLUE receives 25</code></p>
+  </TranscriptMessage>
+  <TranscriptMessage speaker="Qwen3 14B" label="self-critique · iteration 1" tone="private">
+    <p><strong>Payoff alignment:</strong> Player BLUE has no resources and will likely accept any positive offer. Suggestion: reduce the amount given to Player BLUE to 20 Dollars.</p>
+  </TranscriptMessage>
+  <TranscriptMessage speaker="Qwen3 14B" label="rewrite · iteration 1" tone="offer">
+    <p>I propose that I give you 20 Dollars. This is fair and gives you an incentive to accept.</p>
+    <p><code>RED keeps 80 · BLUE receives 20</code></p>
+  </TranscriptMessage>
+  <TranscriptMessage speaker="Qwen3 14B" label="self-critique · iteration 2" tone="private">
+    <p><strong>Payoff alignment:</strong> Offering 20 Dollars improves on the previous draft, but Player RED could offer even less, such as 10 Dollars, while still securing acceptance.</p>
+  </TranscriptMessage>
+  <TranscriptMessage speaker="Qwen3 14B" label="committed move" tone="offer">
+    <p>I propose that I give you 10 Dollars. This is fair and gives you an incentive to accept.</p>
+    <p><code>RED keeps 90 · BLUE receives 10</code></p>
+  </TranscriptMessage>
+</Transcript>
+
+Because the refinement loop produces a draft, two critiques, and two rewrites, it generates roughly six times as much text per move as the default strategy: a median of 4,900 characters against 790. It modestly improves completion, but the gains in negotiation outcomes do not justify that additional cost in general.
+
+## Team Negotiation
 
 One negotiating party becomes a private team of three models. Members draft independently, revise over two discussion rounds while seeing each other's drafts, then rank the slate. A Borda count picks the committed move, and the rationale is rewritten in first person so the opponent never sees the team.
 
 <Figure src="/projects/llm-negotiation/team.webp" alt="Team deliberation protocol" caption="Independent drafts, discussion rounds, Borda consensus." />
 
+The team experiments compare homogeneous trios with heterogeneous teams containing one Gemma, one Mistral, and one Qwen model. Deliberation does not produce a systematic win-rate improvement: no team-versus-single-agent comparison separates from its matched baseline. Some localised payoff gains appear, particularly in structurally weak seats, but the effect is not general.
+
+Heterogeneous teams produce more diverse drafts than homogeneous teams (mean pairwise cosine distance of approximately 0.50 versus 0.36), yet this diversity is not positively associated with payoff or win rate. Across 650 committed heterogeneous moves, the Mistral member's draft wins the Borda count 80.5% of the time, even though Mistral is the weakest family in the single-agent benchmark.
+
+<Figure src="/projects/llm-negotiation/hetero-family-consensus-authorship.png" alt="Share of heterogeneous-team committed moves authored by each model family" caption="Chosen-move authorship in heterogeneous teams. Mistral accounts for about 80% of committed moves across all three games." />
+
+In the following trace, the members begin with three different offers. After discussion, the two 25-dollar proposals lose to the one-dollar offer, which all three members rank first.
+
+<Transcript title="Members converge on a one-dollar proposal" meta="Ultimatum · heterogeneous team as Player RED vs. Gemma 3 12B · run 1780563747259">
+  <TranscriptMessage speaker="Gemma 3 12B" label="initial draft" tone="offer">
+    <p><code>RED gives BLUE 10 Dollars</code></p>
+  </TranscriptMessage>
+  <TranscriptMessage speaker="Ministral 3 14B" label="initial draft" tone="offer">
+    <p><code>RED gives BLUE 1 Dollar</code></p>
+    <p>Any non-zero offer will be accepted, as rejection yields zero. A one-dollar offer minimizes RED's loss while ensuring the trade proceeds.</p>
+  </TranscriptMessage>
+  <TranscriptMessage speaker="Qwen3 14B" label="initial draft" tone="offer">
+    <p><code>RED gives BLUE 25 Dollars</code></p>
+    <p>Offering one dollar is too minimal and risks rejection; a more substantial share is more likely to be accepted.</p>
+  </TranscriptMessage>
+  <TranscriptMessage speaker="Team" label="after two discussion rounds" tone="system">
+    <p>The final slate contains two 25-dollar proposals and one 1-dollar proposal. Each member ranks the 1-dollar proposal first; its Borda score is <code>6</code>, against <code>2</code> and <code>1</code> for the alternatives.</p>
+  </TranscriptMessage>
+  <TranscriptMessage speaker="Gemma 3 12B" label="Player BLUE · responder" tone="reply">
+    <p>Accepting the trade.</p>
+    <p><code>ACCEPT</code></p>
+  </TranscriptMessage>
+  <TranscriptOutcome>
+    <p><strong>Outcome.</strong> The team commits the one-dollar offer. The responder accepts, leaving Player RED with 99 Dollars and Player BLUE with 1 Dollar.</p>
+  </TranscriptOutcome>
+</Transcript>
+
+The cost is substantial. A single agent generates 990 characters per move on average, compared with 12,000 for a homogeneous team and 14,700 for a heterogeneous team. At this setting, team deliberation is not an efficient way to systematically improve negotiation outcomes.
+
 ## Engineering
 
-- Forked NegotiationArena and added local open-weight inference, a **parse-error retry loop** that feeds parser errors back to the model (recovers most protocol failures of small models, ablated separately), Self-Refine and team agents with full trace logging.
-- A single `experiments.yaml` drives every run; launchers for two SLURM clusters (MIA, Deucalion) and for free Kaggle GPUs, with results pushed back to git branches.
-- A Streamlit explorer to read full game transcripts, including the private Self-Refine and deliberation traces.
+The implementation extends NegotiationArena with local open-weight inference through Hugging Face `transformers`, 8-bit quantisation for the largest models, and experiment launchers for SLURM clusters and Kaggle GPUs. A single `experiments.yaml` file defines the model groups, games, conditions, and retry settings used by the runner.
+
+The framework records both public game histories and private inference-time traces. This makes it possible to inspect not only the move that reached the opponent, but also the drafts, critiques, discussion rounds, rankings, parser errors, and recovery attempts that produced it. The Streamlit explorer was extended to read these traces alongside the aggregate analyses.
+
+## Conclusions
+
+The benchmark shows that open-weight models can negotiate in all three scenarios and reproduce patterns previously reported for proprietary models, including price anchoring, positional asymmetries, and irrational rejections. They also exhibit a failure not reported for the closed-source models: sellers sometimes accept prices below their production cost. Qwen is the most consistent family across parameter tiers.
+
+The social-persona effects do not transfer as a reliable improvement. Their value depends on the game and the model carrying the persona. Cunning in particular is high-risk: it can increase the responder's win rate while also destroying the deal and lowering mean payoff.
+
+Self-Refine has an asymmetric effect. It helps structurally disadvantaged seats in most cells, but can hurt seats that already hold a positional advantage. The improvement is not large enough to justify the six-fold increase in generated text except, potentially, in those disadvantaged positions.
+
+Team deliberation leaves win rate essentially unchanged and produces only localised payoff gains. Heterogeneous teams generate more diverse drafts, but the consensus mechanism selects Mistral's draft in about 80% of heterogeneous moves, despite Mistral being the weakest single family in the benchmark. The gains do not justify the twelve- to fifteen-fold inference cost.
+
+## Future Work
+
+The results and limitations point to the following directions for future work:
+
+<Table
+  head={["Direction", "Purpose"]}
+  rows={[
+    ["More realistic negotiation scenarios", "Introduce richer settings with more issues to trade off, and concrete goods and currencies in place of abstract resources."],
+    ["Increase the number of runs", "Narrow the confidence intervals and support more robust statistical conclusions."],
+    ["Proprietary and frontier open-weight cross-play", "Quantify the gap between open-weight and proprietary models, including stronger families such as DeepSeek or Kimi."],
+    ["Varying game parameters", "Test the effect of changing the fixed seller cost, buyer value, pot size, resources, and turn limits inherited from NegotiationArena."],
+    ["Negotiation styles", "Study specific tactics beyond the two personas, such as good-cop/bad-cop behaviour."],
+    ["Self-Refine critique design", "Test game-specific or alternative critique prompts instead of the fixed criteria used here."],
+    ["Self-Refine adaptive stopping", "Stop when a draft stops changing, or when a cheap heuristic judges it good enough, to reduce inference cost."],
+    ["Understanding the Mistral preference", "Identify why Mistral's drafts are selected so often and whether the bias persists across model tiers."],
+    ["Alternative consensus mechanisms", "Compare Borda voting with majority voting, confidence-weighted voting, a representative member, or a neutral judge."],
+    ["Member roles and discussion topology", "Test explicit roles such as leader, analyst, and devil's advocate, together with star, chain, or mesh discussion structures."],
+    ["Team size", "Measure the trade-off between diversity of proposals and computational cost as the number of members changes."],
+  ]}
+/>
