@@ -159,7 +159,7 @@ export default function AboutPage() {
               rel="noreferrer"
               className="text-fg underline decoration-white/30 underline-offset-4 transition-colors hover:text-fg hover:decoration-accent"
             >
-              Acquired FM
+              Acquired 
             </a>{" "}
             and{" "}
             <a
