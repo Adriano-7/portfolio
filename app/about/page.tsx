@@ -81,8 +81,8 @@ const associations: Association[] = [
       },
       {
         src: "/associations/sinf/sinf-podium-presentation.webp",
-        alt: "Opening Steven Pemberton's talk at FEUP",
-        caption: "Opening Steven Pemberton's talk at FEUP",
+        alt: "Opening Steven Pemberton's talk at SINF",
+        caption: "Opening Steven Pemberton's talk at SINF",
       },
       {
         src: "/associations/sinf/sinf-team-clifford-stoll.webp",
