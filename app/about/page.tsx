@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 const skills: [string, string[]][] = [
-  ["Modelling", ["PyTorch", "HF Transformers", "PEFT / LoRA", "Diffusers", "vLLM", "scikit-learn", "XGBoost"]],
+  ["Modelling", ["PyTorch", "HF Transformers", "scikit-learn"]],
   ["Domains", ["LLM agents", "NLP", "Computer vision", "Reinforcement learning", "Graph ML", "Synthetic data"]],
   ["Languages", ["Python", "C++", "C", "Java", "JavaScript", "Dart"]],
   ["Systems", ["FastAPI", "React / Next.js", "Flutter", "SLURM", "Docker", "Git", "Figma"]],

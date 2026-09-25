@@ -24,6 +24,7 @@ export type ProjectMeta = {
   cover: string;
   coverSm: string;
   cardCover?: string;
+  hidden?: boolean;
 };
 
 export type Project = ProjectMeta & { content: string };
@@ -72,6 +73,7 @@ function load(file: string): Project {
     cardCover: fs.existsSync(path.join(process.cwd(), "public", "projects", slug, "cover-static.webp"))
       ? `/projects/${slug}/cover-static.webp`
       : cover,
+    hidden: Boolean(data.hidden || data.draft),
     content: content.trim(),
   };
 }
@@ -85,6 +87,7 @@ export function getProjects(): Project[] {
       .readdirSync(DIR)
       .filter((f) => f.endsWith(".mdx"))
       .map(load)
+      .filter((p) => !p.hidden)
       .sort((a, b) => a.order - b.order);
   }
   return cache;
