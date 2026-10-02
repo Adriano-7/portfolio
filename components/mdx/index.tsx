@@ -58,22 +58,17 @@ export function Transcript({
   children: ReactNode;
 }) {
   return (
-    <section className="my-8 overflow-hidden rounded-xl border border-white/10 bg-white/[0.025]">
-      <header className="border-b border-white/10 bg-white/[0.03] px-5 py-4">
-        <h3 className="!mt-0 !text-base !font-medium !text-fg">{title}</h3>
-        <p className="mono !mb-0 !mt-1 text-xs normal-case tracking-normal text-muted">{meta}</p>
+    <section className="transcript my-10 overflow-hidden rounded-sm bg-[#171717]">
+      <header className="border-b border-white/10 px-5 py-6 sm:px-7">
+        <h3 className="!m-0 !text-lg !font-medium !leading-snug !tracking-[-0.015em] !text-fg">{title}</h3>
+        <p className="!mb-0 !mt-3 !text-xs !leading-relaxed !text-[#a3a3a3]">{meta}</p>
       </header>
-      <div className="space-y-4 px-5 py-5">{children}</div>
+      <div className="px-5 sm:px-7">{children}</div>
     </section>
   );
 }
 
-const transcriptTone = {
-  offer: "border-[#f5a524]/35 bg-[#f5a524]/[0.07]",
-  reply: "border-sky-300/25 bg-sky-300/[0.05]",
-  private: "border-violet-300/25 bg-violet-300/[0.05]",
-  system: "border-white/10 bg-white/[0.03]",
-} as const;
+type TranscriptTone = "offer" | "reply" | "private" | "system";
 
 export function TranscriptMessage({
   speaker,
@@ -83,17 +78,17 @@ export function TranscriptMessage({
 }: {
   speaker: string;
   label?: string;
-  tone?: keyof typeof transcriptTone;
+  tone?: TranscriptTone;
   children: ReactNode;
 }) {
   return (
-    <div className="grid gap-2 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:gap-4">
-      <div className="mono pt-2 text-[0.68rem] uppercase tracking-[0.12em] text-muted">
-        <span className="block text-fg">{speaker}</span>
-        {label && <span className="mt-0.5 block">{label}</span>}
+    <div data-tone={tone} className="grid gap-3 border-b border-white/[0.08] py-6 last:border-b-0 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-6">
+      <div className="min-w-0 text-xs leading-relaxed">
+        <span className="block font-medium text-fg">{speaker}</span>
+        {label && <span className="mt-1 block text-[#a3a3a3]">{label}</span>}
       </div>
       <div
-        className={`rounded-lg border px-4 py-3 text-[0.95rem] leading-7 text-[#d4d4d4] [&_p]:!my-0 [&_p+p]:!mt-2 [&_code]:rounded [&_code]:bg-black/20 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.85em] [&_code]:text-fg ${transcriptTone[tone]}`}
+        className="min-w-0 [overflow-wrap:anywhere] [&_p]:!my-0 [&_p]:!text-[0.95rem] [&_p]:!leading-7 [&_p+p]:!mt-3 [&_code]:!rounded-none [&_code]:!bg-transparent [&_code]:!p-0 [&_code]:!text-[0.8rem] [&_code]:!text-[#a3a3a3]"
       >
         {children}
       </div>
@@ -103,7 +98,7 @@ export function TranscriptMessage({
 
 export function TranscriptOutcome({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-lg border border-emerald-300/25 bg-emerald-300/[0.06] px-4 py-3 text-[0.95rem] leading-7 text-[#d4d4d4] [&_p]:!my-0 [&_strong]:font-medium [&_strong]:text-emerald-200">
+    <div className="py-6 [&_p]:!my-0 [&_p]:!text-sm [&_p]:!leading-6 [&_p]:!text-[#a3a3a3] [&_strong]:!font-medium [&_strong]:!text-fg">
       {children}
     </div>
   );
