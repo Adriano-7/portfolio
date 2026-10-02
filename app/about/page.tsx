@@ -146,9 +146,28 @@ const associations: Association[] = [
     org: "NIAEFEUP",
     role: "UNI development team",
     when: "2023 – 2025",
-    text: "One of the three-person UI/UX team that led the redesign of UNI, the open-source Flutter app University of Porto students use every day, then part of the team implementing it.",
+    text: "I started using UNI as soon as I joined university. When I discovered it was an open-source app built by students and used by thousands of others, I wanted to be part of it so i joined NIAEFEUP.\n\nUNI had been growing for several years and was ready for a new look. For a year, two friends and I worked through the app, mapped out its features, and created mockups to rethink how it looked and felt to use. There was something especially rewarding about working on a product that my friends and I used every day.\n\nA year later, I also joined the development team, and together we implemented the new version of the app.",
     href: "https://github.com/NIAEFEUP/uni",
     hrefLabel: "UNI on GitHub",
+    galleryLayout: "mockups",
+    beforePhotos: [
+      { src: "/associations/niaefeup/before/1 1.png", alt: "UNI before the redesign · Home", caption: "UNI · Home before the redesign" },
+      { src: "/associations/niaefeup/before/2 1.png", alt: "UNI before the redesign · Exams", caption: "UNI · Exams before the redesign" },
+      { src: "/associations/niaefeup/before/8 1.png", alt: "UNI before the redesign · Library occupancy", caption: "UNI · Library occupancy before the redesign" },
+      { src: "/associations/niaefeup/before/7 1.png", alt: "UNI before the redesign · Calendar", caption: "UNI · Calendar before the redesign" },
+      { src: "/associations/niaefeup/before/6 1.png", alt: "UNI before the redesign · Restaurants", caption: "UNI · Restaurants before the redesign" },
+      { src: "/associations/niaefeup/before/5 1.png", alt: "UNI before the redesign · Campus map", caption: "UNI · Campus map before the redesign" },
+      { src: "/associations/niaefeup/before/4 1.png", alt: "UNI before the redesign · Courses", caption: "UNI · Courses before the redesign" },
+    ],
+    photos: [
+      { src: "/associations/niaefeup/07.png", alt: "UNI redesign showing the home screen and widget customisation", caption: "UNI · Home screen and widget customisation" },
+      { src: "/associations/niaefeup/01.png", alt: "UNI home screen with the next class, shortcuts, and university news", caption: "UNI · Home" },
+      { src: "/associations/niaefeup/03.png", alt: "UNI class timetable with rooms and teaching staff", caption: "UNI · Class timetable" },
+      { src: "/associations/niaefeup/02.png", alt: "UNI exam calendar grouped by month", caption: "UNI · Exam calendar" },
+      { src: "/associations/niaefeup/04.png", alt: "UNI campus restaurants and daily menus", caption: "UNI · Restaurants and menus" },
+      { src: "/associations/niaefeup/05.png", alt: "UNI campus map with food locations and floor selection", caption: "UNI · Campus map" },
+      { src: "/associations/niaefeup/06.png", alt: "UNI faculty screen with library occupancy, events, and services", caption: "UNI · Faculty services" },
+    ],
   },
 ];
 
@@ -231,7 +250,7 @@ export default function AboutPage() {
         </section>
 
         <section className="relative mt-20 bg-bg" aria-labelledby="community-heading">
-          <h2 id="community-heading" className="mb-8 text-xl font-medium tracking-[-0.02em]">Community & volunteering</h2>
+          <h2 id="community-heading" className="mb-8 text-3xl font-medium leading-tight tracking-[-0.025em] sm:text-4xl">Community & volunteering</h2>
           <AssociationShowcase associations={associations} />
         </section>
 
