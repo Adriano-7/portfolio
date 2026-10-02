@@ -29,7 +29,14 @@ const associations: Association[] = [
     org: "ESN Porto",
     role: "IT manager",
     when: "2025 – 2026",
-    text: "Led the IT department of the Porto section of Europe's largest student association, which welcomes 3500+ exchange students each semester. Built the section's public website, an asset requisition platform and a scholarship evaluation platform, and a model that forecasts ESN Card demand. Won the Lobos d'Ouro award for best national IT initiative.",
+    text: (
+      <>
+        <p>My previous experiences meant a lot to me, but I felt I had done what I set out to do and was ready to try something different. That brought me to ESN Porto, and joining turned out to be one of the best decisions I made.</p>
+        <p>I met people from different backgrounds, courses, and nationalities. Being part of that community made me feel European in a way I hadn’t before.</p>
+        <p>After one semester, I took on the role of IT manager. Together, we developed the new ESN Porto website and a requisitions app to track the section’s inventory. We also built a scholarship evaluation platform used to review hundreds of applications, automated event descriptions, and created the website for the International Erasmus Games. During that time, we won the Lobos d’Ouro award for Best National IT Initiative.</p>
+        <p>Alongside my IT work, I helped organise 21 events, including trips, city tours, sports activities, and cultural nights.</p>
+      </>
+    ),
     photos: [
       {
         src: "/associations/esn/esn-team-pool.webp",
@@ -37,9 +44,9 @@ const associations: Association[] = [
         caption: "ESN Porto retreat team building",
       },
       {
-        src: "/associations/esn/esn-vigo-trip.webp",
-        alt: "ESN trip to Vigo",
-        caption: "Trip to Vigo with exchange students",
+        src: "/associations/esn/esn-ski-trip.webp",
+        alt: "ESN Serra da Estrela snow trip",
+        caption: "Organizing team of the ESN trip to Serra da Estrela",
       },
       {
         src: "/associations/esn/esn-lisbon-praca.webp",
@@ -47,9 +54,9 @@ const associations: Association[] = [
         caption: "Trip to Lisbon with exchange students",
       },
       {
-        src: "/associations/esn/esn-ski-trip.webp",
-        alt: "ESN Serra da Estrela snow trip",
-        caption: "Organizing team of the ESN trip to Serra da Estrela",
+        src: "/associations/esn/esn-vigo-trip.webp",
+        alt: "ESN trip to Vigo",
+        caption: "Trip to Vigo with exchange students",
       },
       {
         src: "/associations/esn/esn-sports-padel.webp",
@@ -67,7 +74,23 @@ const associations: Association[] = [
     org: "SINF",
     role: "Head of the program department",
     when: "2025",
-    text: "Ran the program of Semana de Informática: 11 talks and 8 workshops, the largest line-up in six years. Speaker outreach, scheduling and on-site logistics with a team of volunteers.",
+    text: (
+      <>
+        <p>Together, we recruited speakers and curated the programme for SINF, the annual informatics week at the Faculty of Engineering of the University of Porto. We delivered the largest programme in six years, featuring 11 talks and 8 workshops over four days, up from 4 talks and 2 workshops in the previous edition.</p>
+        <p>
+          That edition also featured SINF’s first major international speaker,{" "}
+          <a
+            href="https://en.wikipedia.org/wiki/Steven_Pemberton"
+            target="_blank"
+            rel="noreferrer"
+            className="text-fg underline decoration-white/30 underline-offset-4 transition-colors hover:decoration-white/70"
+          >
+            Steven Pemberton
+          </a>
+          . I had the opportunity to welcome him to Porto and talk with him about what it was like to live through the early days of the internet, the origins of Python, and how he sees the future of technology.
+        </p>
+      </>
+    ),
     photos: [
       {
         src: "/associations/sinf/DJI_20251021161509_0007_D.jpg",
@@ -95,7 +118,7 @@ const associations: Association[] = [
     org: "ENEI",
     role: "Program department",
     when: "2024 – 2025",
-    text: "Member of the department that recruited speakers and curated 25 talks and 21 workshops for the national meeting of informatics students.",
+    text: "ENEI was my first experience organising a conference. Throughout the year, I helped recruit speakers and shape the programme for this national student technology conference in Porto, featuring 25 talks and 21 workshops.\n\nAs part of the programme team, I worked on speaker outreach, scheduling, and logistics. It taught me that a first “no” isn’t always final, and that following up can sometimes open a door that seemed closed. I also got to work with incredible people along the way.",
     photos: [
       {
         src: "/associations/enei/enei-celebration.webp",
@@ -207,8 +230,8 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="mt-16">
-          <h2 className="mono mb-5 text-muted">Community & Volunteering</h2>
+        <section className="relative mt-20 bg-bg" aria-labelledby="community-heading">
+          <h2 id="community-heading" className="mb-8 text-xl font-medium tracking-[-0.02em]">Community & volunteering</h2>
           <AssociationShowcase associations={associations} />
         </section>
 

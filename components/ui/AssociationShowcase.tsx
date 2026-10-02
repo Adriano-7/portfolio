@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef } from "react";
 import Image from "next/image";
+import type { ReactNode } from "react";
 import { useStore } from "@/lib/store";
 
 export type AssociationPhoto = {
@@ -14,7 +14,7 @@ export type Association = {
   org: string;
   role: string;
   when: string;
-  text: string;
+  text: ReactNode;
   href?: string;
   hrefLabel?: string;
   photos?: AssociationPhoto[];
@@ -22,45 +22,21 @@ export type Association = {
 
 export function AssociationCard({ association }: { association: Association }) {
   const setLightbox = useStore((s) => s.setLightbox);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-  const startX = useRef(0);
-  const scrollStart = useRef(0);
-  const dragDistance = useRef(0);
-
-  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    const el = scrollRef.current;
-    if (!el) return;
-    isDragging.current = true;
-    startX.current = e.clientX;
-    scrollStart.current = el.scrollLeft;
-    dragDistance.current = 0;
-  };
-
-  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDragging.current) return;
-    const el = scrollRef.current;
-    if (!el) return;
-    const dx = e.clientX - startX.current;
-    dragDistance.current = Math.max(dragDistance.current, Math.abs(dx));
-    el.scrollLeft = scrollStart.current - dx;
-  };
-
-  const onPointerUp = () => {
-    isDragging.current = false;
-  };
-
   const hasPhotos = association.photos && association.photos.length > 0;
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.015] p-5 md:p-6">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="mono text-accent">{association.org}</p>
-        <p className="mono text-muted-2">{association.when}</p>
-      </div>
+    <article className="border-t border-white/15 py-9 sm:py-12">
+      <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+        <h3 className="text-2xl font-medium tracking-[-0.025em] sm:text-3xl">{association.org}</h3>
+        <p className="text-sm tabular-nums text-[#a3a3a3]">{association.when}</p>
+      </header>
 
-      <p className="mt-2 text-fg">{association.role}</p>
-      <p className="mt-2 text-sm leading-relaxed text-muted">{association.text}</p>
+      <p className="mt-2 text-base text-fg/90">{association.role}</p>
+      <div className="mt-4 max-w-[65ch] space-y-4 text-[0.95rem] leading-7 text-[#a3a3a3]">
+        {typeof association.text === "string" ? association.text.split("\n\n").map((paragraph) => (
+          <p key={paragraph}>{paragraph}</p>
+        )) : association.text}
+      </div>
 
       {association.href && (
         <a
@@ -74,20 +50,12 @@ export function AssociationCard({ association }: { association: Association }) {
       )}
 
       {hasPhotos && (
-        <div
-          ref={scrollRef}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-          className="no-scrollbar -mx-5 mt-5 flex cursor-grab select-none gap-3 overflow-x-auto px-5 active:cursor-grabbing md:-mx-6 md:px-6"
-        >
-          {association.photos!.map((photo, i) => (
+        <div className="mt-6 grid grid-cols-2 gap-2 sm:mt-7 sm:grid-cols-[1.65fr_1fr] sm:gap-3">
+          {association.photos!.slice(0, 3).map((photo, i) => (
             <button
               key={photo.src}
               type="button"
               onClick={(e) => {
-                if (dragDistance.current > 5) return;
                 e.currentTarget.focus();
                 setLightbox({
                   src: photo.src,
@@ -97,47 +65,33 @@ export function AssociationCard({ association }: { association: Association }) {
                   index: i,
                 });
               }}
-              aria-label={`Enlarge photo: ${photo.alt}`}
-              className="group relative h-36 w-52 shrink-0 cursor-zoom-in overflow-hidden rounded-xl border border-white/10 bg-[#141414] transition-colors hover:border-white/25 sm:h-40 sm:w-60"
+              aria-label={i === 2 && association.photos!.length > 3 ? `Open gallery of ${association.photos!.length} photos: ${photo.alt}` : `Enlarge photo: ${photo.alt}`}
+              className={`group relative block min-w-0 cursor-zoom-in overflow-hidden rounded-sm bg-[#171717] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white ${i === 0 ? "col-span-2 aspect-[3/2] sm:col-span-1 sm:row-span-2 sm:aspect-auto sm:min-h-72" : "aspect-[16/10]"}`}
             >
               <Image
                 src={photo.src}
                 alt={photo.alt}
                 fill
-                sizes="(max-width: 640px) 208px, 240px"
+                sizes={i === 0 ? "(max-width: 640px) calc(100vw - 40px), 430px" : "(max-width: 640px) 50vw, 265px"}
                 className="pointer-events-none object-cover transition-transform duration-500 ease-out group-hover:scale-105"
                 loading={i < 2 ? "eager" : "lazy"}
               />
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute bottom-2.5 right-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/75 text-white/90 shadow-sm backdrop-blur-xs opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="11" cy="11" r="7.5" />
-                  <path d="m21 21-4.35-4.35" />
-                </svg>
-              </span>
+              {i === 2 && association.photos!.length > 3 && (
+                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-3 pb-3 pt-8 text-right text-xs font-medium text-white sm:px-4 sm:pb-4 sm:text-sm">
+                  View all {association.photos!.length} photos ↗
+                </span>
+              )}
             </button>
           ))}
         </div>
       )}
-    </div>
+    </article>
   );
 }
 
 export function AssociationShowcase({ associations }: { associations: Association[] }) {
   return (
-    <div className="flex flex-col gap-5">
+    <div className="border-b border-white/15">
       {associations.map((a) => (
         <AssociationCard key={a.org} association={a} />
       ))}
