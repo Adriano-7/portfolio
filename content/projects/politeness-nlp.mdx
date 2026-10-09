@@ -159,7 +159,3 @@ The best prompted result, Mistral few-shot at 0.74, is 18 points behind the fine
 />
 
 We cross-validated only the best configuration, given the cost, and redid the MLM pass independently inside every fold. Pre-training once over the full corpus and then splitting would have leaked validation text into the adapted weights.
-
-## Caveats
-
-92.4% matches the published benchmark, but I would not trust it for content moderation. The length shortcut, the 1.49 perplexity and the concentration of residual errors on the fuzziest boundary all suggest the model is good at recognising text three LLMs generated from a four-level prompt, which is narrower than recognising politeness. The impolite class looks more robust: 99% F1, and not a single impolite text called polite. Detecting the clearly offensive end is the part most likely to hold up on real data.

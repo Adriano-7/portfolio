@@ -32,7 +32,6 @@ const associations: Association[] = [
     text: (
       <>
         <p>My previous experiences meant a lot to me, but I felt I had done what I set out to do and was ready to try something different. That brought me to ESN Porto, and joining turned out to be one of the best decisions I made.</p>
-        <p>I met people from different backgrounds, courses, and nationalities. Being part of that community made me feel European in a way I hadn’t before.</p>
         <p>After one semester, I took on the role of IT manager. Together, we developed the new ESN Porto website and a requisitions app to track the section’s inventory. We also built a scholarship evaluation platform used to review hundreds of applications, automated event descriptions, and created the website for the International Erasmus Games. During that time, we won the Lobos d’Ouro award for Best National IT Initiative.</p>
         <p>Alongside my IT work, I helped organise 21 events, including trips, city tours, sports activities, and cultural nights.</p>
       </>
@@ -76,7 +75,7 @@ const associations: Association[] = [
     when: "2025",
     text: (
       <>
-        <p>Together, we recruited speakers and curated the programme for SINF, the annual informatics week at the Faculty of Engineering of the University of Porto. We delivered the largest programme in six years, featuring 11 talks and 8 workshops over four days, up from 4 talks and 2 workshops in the previous edition.</p>
+        <p>Coordinated the department that recruited speakers and curated the programme for SINF, the annual informatics week at the Faculty of Engineering of the University of Porto. We delivered the largest programme in six years, featuring 11 talks and 8 workshops over four days, up from 4 talks and 2 workshops in the previous edition.</p>
         <p>
           That edition also featured SINF’s first major international speaker,{" "}
           <a

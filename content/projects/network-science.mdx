@@ -199,12 +199,3 @@ That silhouette needs reading carefully. A partition of 2,694 / 13 / 1 scores we
 
 The GNNs won wherever there was a signal the classical algorithms had no way to reach, which on Cora and PubMed means the abstract word vectors, and lost everywhere that signal was missing. In role discovery the useful representation turned out to be a hand-computed graphlet vector, and it helped the GNNs about as much as it helped K-Means, which suggests the feature was doing the work in both pipelines.
 
-## Caveats
-
-The community-detection comparison is not like-for-like. The GNNs are semi-supervised, trained against the same labels the external metrics score them on, and are handed the number of communities; Louvain and label propagation infer both from topology alone. Their ARI gap on Cora would need an unsupervised GNN baseline before it could be read as the report reads it.
-
-Every qualitative analysis in the project runs on Cora. The community interpretation, the role fingerprints and the role-to-subject mapping all come from one 2,708-node citation graph, and citation networks are unusually well-behaved: homophilous, sparse, with features that were engineered to be predictive of the labels. How much of "purely structural methods discover semantically meaningful roles" survives on a graph that was not built that way is untested here.
-
-Role discovery has no ground truth, and internal metrics are not a substitute for one. Silhouette selects k and then scores the result, which rewards degenerate partitions; the Davies-Bouldin and Calinski-Harabasz columns agree with it, but they share the same bias toward well-separated outlier clusters.
-
-Link-prediction results are four-dataset means over graphs whose behaviour diverges strongly, and the standard deviations in the per-model figure are wider than most of the gaps those means are used to argue about. The report's own limitation stands too: single-objective training against a loss that correlates with AUC and not with MRR means the ranking numbers are partly an artefact of where early stopping happened to land.
